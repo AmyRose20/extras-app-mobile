@@ -5,6 +5,8 @@ import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import InvitesScreen from './src/screens/InvitesScreen';
+import CreateShootDayScreen from './src/screens/CreateShootDayScreen';
+import CreateCallRequestScreen from './src/screens/CreateCallRequestScreen';
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>('login');
@@ -222,18 +224,27 @@ function App(): React.JSX.Element {
   }
 
   if (screen === 'invites') {
-    return (
-      <InvitesScreen
-        invites={invites}
-        loading={invitesLoading}
-        message={invitesMessage}
-        onRespond={respondToInvite}
-        onBack={() => setScreen('home')}
-      />
-    );
+      return (
+        <InvitesScreen
+          invites={invites}
+          loading={invitesLoading}
+          message={invitesMessage}
+          onRespond={respondToInvite}
+          onBack={() => setScreen('home')}
+        />
+      );
+    }
+
+  if (screen === 'createShootDay') {
+    return <CreateShootDayScreen token={token} onBack={() => setScreen('home')} />;
   }
 
-  // Placeholder for the coordinator screens we'll build next.
+  if (screen === 'createCallRequest') {
+    return <CreateCallRequestScreen token={token} onBack={() => setScreen('home')} />;
+  }
+
+  // Fallback — shouldn't normally be reached, but keeps TypeScript happy
+  // about every possible Screen value being handled.
   return (
     <HomeScreen userName={userName} role={role} onNavigate={(target) => setScreen(target)} onLogout={handleLogout} />
   );
