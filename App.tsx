@@ -6,9 +6,24 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  View,
 } from 'react-native';
 
 type Screen = 'login' | 'home' | 'profile' | 'invites';
+
+// Shape of one invite, as returned by GET /invites/me
+type Invite = {
+  id: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
+  callRequest: {
+    description: string;
+    shootDay: {
+      productionName: string;
+      location: string;
+      date: string;
+    };
+  };
+};
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>('login');
@@ -19,15 +34,18 @@ function App(): React.JSX.Element {
   const [userName, setUserName] = useState('');
 
   // ----- Profile screen state -----
-  // "loading" and "profileMessage" are separate from the login ones,
-  // since this screen has its own separate fetch/save process.
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
   const [heightCm, setHeightCm] = useState('');
-  const [skills, setSkills] = useState(''); // comma-separated, e.g. "stunt work, horse riding"
+  const [skills, setSkills] = useState('');
   const [availability, setAvailability] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
+
+  // ----- Invites screen state -----
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [invitesLoading, setInvitesLoading] = useState(false);
+  const [invitesMessage, setInvitesMessage] = useState('');
 
   const handleLogin = async () => {
     try {
@@ -52,7 +70,6 @@ function App(): React.JSX.Element {
     }
   };
 
-  // Fetches the current profile from the backend and fills in the form.
   const loadProfile = async () => {
     setProfileLoading(true);
     setProfileMessage('');
@@ -67,8 +84,6 @@ function App(): React.JSX.Element {
         return;
       }
 
-      // The backend might return null for fields never filled in yet,
-      // so we fall back to an empty string for each one.
       setAge(data.age ? String(data.age) : '');
       setGender(data.gender ?? '');
       setHeightCm(data.heightCm ? String(data.heightCm) : '');
@@ -81,14 +96,6 @@ function App(): React.JSX.Element {
     }
   };
 
-  // Whenever we switch TO the profile screen, load the latest data.
-  useEffect(() => {
-    if (screen === 'profile') {
-      loadProfile();
-    }
-  }, [screen]);
-
-  // Sends the edited fields back to the backend.
   const saveProfile = async () => {
     setProfileMessage('');
     try {
@@ -102,8 +109,6 @@ function App(): React.JSX.Element {
           age: age ? parseInt(age, 10) : null,
           gender: gender || null,
           heightCm: heightCm ? parseInt(heightCm, 10) : null,
-          // Turn "stunt work, horse riding" back into an array,
-          // trimming extra spaces around each one.
           skills: skills
             .split(',')
             .map((s) => s.trim())
@@ -124,6 +129,65 @@ function App(): React.JSX.Element {
       setProfileMessage('Something went wrong saving your profile.');
     }
   };
+
+  // Fetches this extra's invites from the backend.
+  const loadInvites = async () => {
+    setInvitesLoading(true);
+    setInvitesMessage('');
+    try {
+      const response = await fetch('http://10.0.2.2:4000/invites/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setInvitesMessage(`Could not load invites: ${data.error}`);
+        return;
+      }
+
+      setInvites(data);
+    } catch (error) {
+      setInvitesMessage('Something went wrong loading your invites.');
+    } finally {
+      setInvitesLoading(false);
+    }
+  };
+
+  // Sends an accept/decline for one invite, then refreshes the list
+  // so the screen reflects the updated status immediately.
+  const respondToInvite = async (inviteId: string, status: 'ACCEPTED' | 'DECLINED') => {
+    try {
+      const response = await fetch(`http://10.0.2.2:4000/invites/${inviteId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setInvitesMessage(`Could not update invite: ${data.error}`);
+        return;
+      }
+
+      // Refresh the list so the new status shows immediately.
+      loadInvites();
+    } catch (error) {
+      setInvitesMessage('Something went wrong updating that invite.');
+    }
+  };
+
+  // Load the right data automatically whenever we switch to that screen.
+  useEffect(() => {
+    if (screen === 'profile') {
+      loadProfile();
+    }
+    if (screen === 'invites') {
+      loadInvites();
+    }
+  }, [screen]);
 
   // ----- LOGIN SCREEN -----
   if (screen === 'login') {
@@ -160,8 +224,6 @@ function App(): React.JSX.Element {
   // ----- HOME SCREEN -----
   if (screen === 'home') {
     const handleLogout = () => {
-      // Clear everything we saved at login, and send the user
-      // back to the login screen with a blank form.
       setToken('');
       setUserName('');
       setEmail('');
@@ -254,13 +316,52 @@ function App(): React.JSX.Element {
     );
   }
 
-  // ----- INVITES SCREEN (still a placeholder) -----
+  // ----- INVITES SCREEN -----
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Invites screen coming soon</Text>
-      <TouchableOpacity style={styles.button} onPress={() => setScreen('home')}>
-        <Text style={styles.buttonText}>Back</Text>
-      </TouchableOpacity>
+      <ScrollView>
+        <Text style={styles.title}>My Invites</Text>
+
+        {invitesLoading ? <Text style={styles.message}>Loading...</Text> : null}
+
+        {!invitesLoading && invites.length === 0 ? (
+          <Text style={styles.message}>No invites yet.</Text>
+        ) : null}
+
+        {invites.map((invite) => (
+          <View key={invite.id} style={styles.card}>
+            <Text style={styles.cardTitle}>{invite.callRequest.description}</Text>
+            <Text style={styles.cardDetail}>
+              {invite.callRequest.shootDay.productionName} — {invite.callRequest.shootDay.location}
+            </Text>
+            <Text style={styles.cardDetail}>
+              {new Date(invite.callRequest.shootDay.date).toDateString()}
+            </Text>
+            <Text style={styles.cardStatus}>Status: {invite.status}</Text>
+
+            {invite.status === 'PENDING' ? (
+              <View style={styles.cardButtonRow}>
+                <TouchableOpacity
+                  style={[styles.smallButton, styles.acceptButton]}
+                  onPress={() => respondToInvite(invite.id, 'ACCEPTED')}>
+                  <Text style={styles.buttonText}>Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.smallButton, styles.declineButton]}
+                  onPress={() => respondToInvite(invite.id, 'DECLINED')}>
+                  <Text style={styles.buttonText}>Decline</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+        ))}
+
+        {invitesMessage ? <Text style={styles.message}>{invitesMessage}</Text> : null}
+
+        <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => setScreen('home')}>
+          <Text style={styles.buttonText}>Back</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -304,6 +405,44 @@ const styles = StyleSheet.create({
     marginTop: 20,
     textAlign: 'center',
     fontSize: 16,
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  cardDetail: {
+    fontSize: 14,
+    color: '#555',
+  },
+  cardStatus: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  cardButtonRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  smallButton: {
+    flex: 1,
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  acceptButton: {
+    backgroundColor: '#16a34a',
+  },
+  declineButton: {
+    backgroundColor: '#dc2626',
   },
 });
 
