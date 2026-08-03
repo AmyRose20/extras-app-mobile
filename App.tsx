@@ -196,6 +196,7 @@ function App(): React.JSX.Element {
       <HomeScreen
         userName={userName}
         role={role}
+        token={token}
         onNavigate={(target) => setScreen(target)}
         onLogout={handleLogout}
       />
@@ -246,7 +247,7 @@ function App(): React.JSX.Element {
   // Fallback — shouldn't normally be reached, but keeps TypeScript happy
   // about every possible Screen value being handled.
   return (
-    <HomeScreen userName={userName} role={role} onNavigate={(target) => setScreen(target)} onLogout={handleLogout} />
+    <HomeScreen userName={userName} role={role} token={token} onNavigate={(target) => setScreen(target)} onLogout={handleLogout} />
   );
 }
 

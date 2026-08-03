@@ -1,16 +1,68 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { SafeAreaView, Text, TouchableOpacity } from 'react-native';
 import { styles } from '../styles';
 import { Role } from '../types';
+import { getApp } from '@react-native-firebase/app';
+import {
+  getMessaging,
+  requestPermission,
+  getToken,
+  AuthorizationStatus,
+} from '@react-native-firebase/messaging';
+import { API_URL } from '../api';
 
 type Props = {
   userName: string;
   role: Role;
+  token: string;
   onNavigate: (screen: 'profile' | 'invites' | 'createShootDay' | 'createCallRequest' | 'callRequestStatus') => void;
   onLogout: () => void;
 };
 
-function HomeScreen({ userName, role, onNavigate, onLogout }: Props) {
+async function registerForPushNotifications(token: string) {
+  const messaging = getMessaging(getApp());
+
+  // Ask the user for permission to send notifications
+  const authStatus = await requestPermission(messaging);
+  const enabled = authStatus === AuthorizationStatus.AUTHORIZED ||
+  authStatus === AuthorizationStatus.PROVISIONAL;
+
+  if (!enabled) {
+    console.log('Push notification permission denied');
+    return;
+  }
+
+  // Get this device's unique FCM token
+  const fcmToken = await getToken(messaging);
+  console.log('FCM Token:', fcmToken);
+
+  // Send it to our backend so it's saved against this extra's profile
+  try {
+    const response = await fetch(`${API_URL}/profiles/me/fcm-token`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ fcmToken }),
+    });
+
+    if (!response.ok) {
+      console.log('Failed to save FCM token to backend');
+    } else {
+      console.log('FCM token saved to backend');
+    }
+  } catch (error) {
+    console.log('Error sending FCM token to backend:', error);
+  }
+}
+
+function HomeScreen({ userName, role, token,  onNavigate, onLogout }: Props) {
+
+  useEffect(() => {
+    registerForPushNotifications(token);
+  }, [token]);
+
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Welcome, {userName}</Text>
