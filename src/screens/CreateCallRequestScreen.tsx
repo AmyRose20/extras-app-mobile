@@ -6,9 +6,10 @@ import { API_URL } from '../api';
 type Props = {
   token: string;
   onBack: () => void;
+  onCreated: (callRequestId: string) => void;
 };
 
-function CreateCallRequestScreen({ token, onBack }: Props) {
+function CreateCallRequestScreen({ token, onBack, onCreated }: Props) {
   const [shootDayId, setShootDayId] = useState('');
   const [description, setDescription] = useState('');
   const [quantityNeeded, setQuantityNeeded] = useState('');
@@ -55,7 +56,13 @@ function CreateCallRequestScreen({ token, onBack }: Props) {
         return;
       }
 
+      if (data.matchedCount === 0) {
+        setMessage(data.warning || 'Created, but no extras matched this criteria.');
+        return;
+      }
+
       setMessage(`Created! Matched ${data.matchedCount} extra(s).`);
+      onCreated(data.callRequest.id);
     } catch (error) {
       setMessage('Something went wrong — is the backend running?');
     }

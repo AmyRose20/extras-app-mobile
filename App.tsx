@@ -7,6 +7,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import InvitesScreen from './src/screens/InvitesScreen';
 import CreateShootDayScreen from './src/screens/CreateShootDayScreen';
 import CreateCallRequestScreen from './src/screens/CreateCallRequestScreen';
+import CallRequestStatusScreen from './src/screens/CallRequestStatusScreen';
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>('login');
@@ -16,6 +17,8 @@ function App(): React.JSX.Element {
   const [token, setToken] = useState('');
   const [userName, setUserName] = useState('');
   const [role, setRole] = useState<Role>('EXTRA');
+  const [activeCallRequestId, setActiveCallRequestId] = useState('');
+
 
   // ----- Profile screen state -----
   const [age, setAge] = useState('');
@@ -241,7 +244,26 @@ function App(): React.JSX.Element {
   }
 
   if (screen === 'createCallRequest') {
-    return <CreateCallRequestScreen token={token} onBack={() => setScreen('home')} />;
+    return (
+      <CreateCallRequestScreen
+        token={token}
+        onBack={() => setScreen('home')}
+        onCreated={(callRequestId) => {
+          setActiveCallRequestId(callRequestId);
+          setScreen('callRequestStatus');
+        }}
+      />
+    );
+  }
+
+  if (screen === 'callRequestStatus') {
+    return (
+      <CallRequestStatusScreen
+        token={token}
+        callRequestId={activeCallRequestId}
+        onBack={() => setScreen('home')}
+      />
+    );
   }
 
   // Fallback — shouldn't normally be reached, but keeps TypeScript happy

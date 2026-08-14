@@ -32,9 +32,11 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack }: Props) 
             <Text style={styles.cardDetail}>
               {new Date(invite.callRequest.shootDay.date).toDateString()}
             </Text>
-            <Text style={styles.cardStatus}>Status: {invite.status}</Text>
+            <Text style={styles.cardStatus}>
+              Status: {invite.isExpired ? 'EXPIRED' : invite.status}
+            </Text>
 
-            {invite.status === 'PENDING' ? (
+            {invite.status === 'PENDING' && !invite.isExpired ? (
               <View style={styles.cardButtonRow}>
                 <TouchableOpacity
                   style={[styles.smallButton, styles.acceptButton]}

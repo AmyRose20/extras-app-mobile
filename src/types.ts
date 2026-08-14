@@ -14,6 +14,7 @@ export type Role = 'ADMIN' | 'EXTRA';
 export type Invite = {
   id: string;
   status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
+  isExpired: boolean;
   callRequest: {
     description: string;
     shootDay: {
