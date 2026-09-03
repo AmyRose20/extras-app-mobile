@@ -11,6 +11,7 @@ import CreateShootDayScreen from './src/screens/CreateShootDayScreen';
 import CreateCallRequestScreen from './src/screens/CreateCallRequestScreen';
 import CallRequestStatusScreen from './src/screens/CallRequestStatusScreen';
 import { getAuth, signInWithCustomToken, signOut } from '@react-native-firebase/auth';
+import { SKILL_OPTIONS, LANGUAGE_OPTIONS } from './src/constants';
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>('login');
@@ -28,7 +29,12 @@ function App(): React.JSX.Element {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
   const [heightCm, setHeightCm] = useState('');
-  const [skills, setSkills] = useState('');
+  const [skills, setSkills] = useState<string[]>([]);
+  const [otherSkills, setOtherSkills] = useState('');
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [otherLanguages, setOtherLanguages] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [availability, setAvailability] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
@@ -38,6 +44,8 @@ function App(): React.JSX.Element {
   const [pendingFacePhoto, setPendingFacePhoto] = useState<string | null>(null);
   const [pendingFullBodyPhoto, setPendingFullBodyPhoto] = useState<string | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showSavedPopup, setShowSavedPopup] = useState(false);
+  const [contactError, setContactError] = useState('');
 
   // ----- Invites screen state -----
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -121,7 +129,14 @@ function App(): React.JSX.Element {
       setAge(data.age ? String(data.age) : '');
       setGender(data.gender ?? '');
       setHeightCm(data.heightCm ? String(data.heightCm) : '');
-      setSkills(data.skills ? data.skills.join(', ') : '');
+      const fetchedSkills: string[] = data.skills ?? [];
+      setSkills(fetchedSkills.filter((s) => SKILL_OPTIONS.includes(s)));
+      setOtherSkills(fetchedSkills.filter((s) => !SKILL_OPTIONS.includes(s)).join(', '));
+      const fetchedLanguages: string[] = data.languages ?? [];
+      setLanguages(fetchedLanguages.filter((l) => LANGUAGE_OPTIONS.includes(l)));
+      setOtherLanguages(fetchedLanguages.filter((l) => !LANGUAGE_OPTIONS.includes(l)).join(', '));
+      setPhoneNumber(data.phoneNumber ?? '');
+      setContactEmail(data.contactEmail || email);
       setAvailability(data.availability ?? '');
       setFacePhotoUrl(data.facePhotoUrl ?? '');
       setFullBodyPhotoUrl(data.fullBodyPhotoUrl ?? '');
@@ -136,6 +151,7 @@ function App(): React.JSX.Element {
 
   const saveProfile = async () => {
   setProfileMessage('');
+  setContactError('');
 
     // Both photos are mandatory — either already saved, or picked just now
     if (!facePhotoUrl && !pendingFacePhoto) {
@@ -147,6 +163,16 @@ function App(): React.JSX.Element {
       setProfileMessage('A full-body photo is required.');
       return;
     }
+
+    if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+        setContactError('Please enter a valid email address.');
+        return;
+    }   
+
+if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
+  setContactError('Please enter a valid phone number (digits, spaces, dashes, and an optional leading + only).');
+  return;
+}
 
     try {
       setUploadingPhoto(true);
@@ -173,10 +199,16 @@ function App(): React.JSX.Element {
           age: age ? parseInt(age, 10) : null,
           gender: gender || null,
           heightCm: heightCm ? parseInt(heightCm, 10) : null,
-          skills: skills
-            .split(',')
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0),
+                    skills: [
+            ...skills,
+            ...otherSkills.split(',').map((s) => s.trim()).filter((s) => s.length > 0),
+          ],
+          languages: [
+            ...languages,
+            ...otherLanguages.split(',').map((l) => l.trim()).filter((l) => l.length > 0),
+          ],
+          phoneNumber: phoneNumber || null,
+          contactEmail: contactEmail || null,
           availability: availability || null,
           facePhotoUrl: newFacePhotoUrl,
           fullBodyPhotoUrl: newFullBodyPhotoUrl,
@@ -195,7 +227,8 @@ function App(): React.JSX.Element {
       setPendingFacePhoto(null);
       setPendingFullBodyPhoto(null);
       setIsEditingProfile(false);
-      setProfileMessage('Saved!');
+      setShowSavedPopup(true);
+      setTimeout(() => setShowSavedPopup(false), 3000);
     } catch (error) {
       setUploadingPhoto(false);
       setProfileMessage('Something went wrong saving your profile.');
@@ -252,6 +285,14 @@ function App(): React.JSX.Element {
     }
   };
 
+  const toggleSkill = (skill: string) => {
+    setSkills((prev) => (prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]));
+  };
+
+  const toggleLanguage = (language: string) => {
+    setLanguages((prev) => (prev.includes(language) ? prev.filter((l) => l !== language) : [...prev, language]));
+  };
+
   useEffect(() => {
     if (screen === 'profile') {
       loadProfile();
@@ -289,6 +330,7 @@ function App(): React.JSX.Element {
     if (screen === 'profile') {
     return (
       <ProfileScreen
+        name={userName}
         age={age}
         setAge={setAge}
         gender={gender}
@@ -296,13 +338,27 @@ function App(): React.JSX.Element {
         heightCm={heightCm}
         setHeightCm={setHeightCm}
         skills={skills}
-        setSkills={setSkills}
+        onToggleSkill={toggleSkill}
+        otherSkills={otherSkills}
+        setOtherSkills={setOtherSkills}
+        languages={languages}
+        onToggleLanguage={toggleLanguage}
+        otherLanguages={otherLanguages}
+        setOtherLanguages={setOtherLanguages}
+        phoneNumber={phoneNumber}
+        setPhoneNumber={setPhoneNumber}
+        contactEmail={contactEmail}
+        setContactEmail={setContactEmail}
+        contactError={contactError}
         availability={availability}
         setAvailability={setAvailability}
         loading={profileLoading}
         message={profileMessage}
         onSave={saveProfile}
-        onBack={() => setScreen('home')}
+        onBack={() => {
+          setIsEditingProfile(false);
+          setScreen('home');
+        }}
         isEditingProfile={isEditingProfile}
         setIsEditingProfile={setIsEditingProfile}
         onCancelEdit={handleCancelEdit}
@@ -313,6 +369,7 @@ function App(): React.JSX.Element {
         onPickFacePhoto={handlePickFacePhoto}
         onPickFullBodyPhoto={handlePickFullBodyPhoto}
         uploadingPhoto={uploadingPhoto}
+        showSavedPopup={showSavedPopup}
       />
     );
   }
