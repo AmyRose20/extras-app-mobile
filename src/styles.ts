@@ -156,6 +156,13 @@ export const styles = StyleSheet.create({
   declineButton: {
     backgroundColor: colors.error,
   },
+  cancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.error,
+    marginTop: spacing.sm,
+    textDecorationLine: 'underline',
+  },
 
   savedPopup: {
     position: 'absolute',

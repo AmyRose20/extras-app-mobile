@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Screen, Role, Invite, ExtraSummary, ExtraProfileDetail } from './src/types';
+import { Screen, Role, Invite, ExtraSummary, ExtraProfileDetail, Tally } from './src/types';
 import { API_URL } from './src/api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { getStorage, ref, putFile, getDownloadURL } from '@react-native-firebase/storage';
@@ -49,6 +49,7 @@ function App(): React.JSX.Element {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showSavedPopup, setShowSavedPopup] = useState(false);
   const [contactError, setContactError] = useState('');
+  const [tally, setTally] = useState<Tally | null>(null);
 
   // ----- Invites screen state -----
   const [invites, setInvites] = useState<Invite[]>([]);
@@ -67,6 +68,7 @@ function App(): React.JSX.Element {
   const [selectedExtraProfile, setSelectedExtraProfile] = useState<ExtraProfileDetail | null>(null);
   const [extraDetailLoading, setExtraDetailLoading] = useState(false);
   const [extraDetailMessage, setExtraDetailMessage] = useState('');
+  const [extraTally, setExtraTally] = useState<Tally | null>(null);
 
   const handleLogin = async () => {
     try {
@@ -164,6 +166,23 @@ function App(): React.JSX.Element {
       setProfileMessage('Something went wrong loading your profile.');
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const loadTally = async () => {
+    try {
+      const response = await fetch(`${API_URL}/invites/tally/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        return;
+      }
+
+      setTally(data);
+    } catch (error) {
+      // Non-critical — the invites screen just doesn't show the widget if this fails.
     }
   };
 
@@ -283,7 +302,7 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     }
   };
 
-  const respondToInvite = async (inviteId: string, status: 'ACCEPTED' | 'DECLINED') => {
+  const respondToInvite = async (inviteId: string, status: 'ACCEPTED' | 'DECLINED' | 'CANCELLED') => {
     try {
       const response = await fetch(`${API_URL}/invites/${inviteId}`, {
         method: 'PATCH',
@@ -359,9 +378,28 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     }
   };
 
+  const loadExtraTally = async (extraProfileId: string) => {
+    setExtraTally(null);
+    try {
+      const response = await fetch(`${API_URL}/invites/tally/${extraProfileId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        return;
+      }
+
+      setExtraTally(data);
+    } catch (error) {
+      // Non-critical — the admin screen just doesn't show the activity widget if this fails.
+    }
+  };
+
   const handleSelectExtra = (id: string) => {
     setScreen('extraProfileDetail');
     loadExtraProfile(id);
+    loadExtraTally(id);
   };
 
   const toggleSkillFilter = (skill: string) => {
@@ -415,6 +453,7 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     }
     if (screen === 'invites') {
       loadInvites();
+      loadTally();
     }
     if (screen === 'extrasList') {
       loadExtras();
@@ -503,6 +542,7 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
           message={invitesMessage}
           onRespond={respondToInvite}
           onBack={() => setScreen('home')}
+          tally={tally}
         />
       );
     }
@@ -540,6 +580,7 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
         loading={extraDetailLoading}
         message={extraDetailMessage}
         onBack={() => setScreen('extrasList')}
+        tally={extraTally}
       />
     );
   }

@@ -15,7 +15,7 @@ export type Role = 'ADMIN' | 'EXTRA';
 
 export type Invite = {
   id: string;
-  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
   isExpired: boolean;
   callRequest: {
     description: string;
@@ -25,6 +25,13 @@ export type Invite = {
       date: string;
     };
   };
+};
+
+export type Tally = {
+  worked: number;
+  declined: number;
+  cancelled: number;
+  threeStrikes: boolean;
 };
 
 // One row in the admin's extras list (matches GET /profiles)
