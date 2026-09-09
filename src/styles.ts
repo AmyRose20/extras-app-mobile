@@ -164,6 +164,37 @@ export const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
 
+  // Row of evenly-spaced stat columns (used in the Activity widgets).
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  statColumn: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  // Centered variant of cardTitle, used as the Activity widget's heading.
+  widgetTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  // 3-strikes warning line shown under the admin's Activity widget.
+  strikesWarning: {
+    color: colors.error,
+    fontWeight: '600',
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+
   savedPopup: {
     position: 'absolute',
     top: '45%',

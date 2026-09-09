@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { styles, colors } from '../styles';
+import { styles, spacing } from '../styles';
 import { Invite, Tally } from '../types';
 
 type Props = {
@@ -41,19 +41,19 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally }: 
         <Text style={styles.title}>My Invites</Text>
 
         {tally ? (
-          <View style={[styles.card, { marginBottom: 20 }]}>
-            <Text style={[styles.cardTitle, { textAlign: 'center' }]}>My Activity</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary }}>{tally.worked}</Text>
+          <View style={[styles.card, { marginBottom: spacing.lg }]}>
+            <Text style={styles.widgetTitle}>My Activity</Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statColumn}>
+                <Text style={styles.statNumber}>{tally.worked}</Text>
                 <Text style={styles.cardDetail}>Worked</Text>
               </View>
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary }}>{tally.declined}</Text>
+              <View style={styles.statColumn}>
+                <Text style={styles.statNumber}>{tally.declined}</Text>
                 <Text style={styles.cardDetail}>Declined</Text>
               </View>
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary }}>{tally.cancelled}</Text>
+              <View style={styles.statColumn}>
+                <Text style={styles.statNumber}>{tally.cancelled}</Text>
                 <Text style={styles.cardDetail}>Cancelled</Text>
               </View>
             </View>
