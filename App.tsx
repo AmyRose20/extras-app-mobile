@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Screen, Role, Invite } from './src/types';
+import { Screen, Role, Invite, ExtraSummary, ExtraProfileDetail } from './src/types';
 import { API_URL } from './src/api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { getStorage, ref, putFile, getDownloadURL } from '@react-native-firebase/storage';
@@ -10,8 +10,10 @@ import InvitesScreen from './src/screens/InvitesScreen';
 import CreateShootDayScreen from './src/screens/CreateShootDayScreen';
 import CreateCallRequestScreen from './src/screens/CreateCallRequestScreen';
 import CallRequestStatusScreen from './src/screens/CallRequestStatusScreen';
+import ExtrasListScreen from './src/screens/ExtrasListScreen';
+import ExtraProfileDetailScreen from './src/screens/ExtraProfileDetailScreen';
 import { getAuth, signInWithCustomToken, signOut } from '@react-native-firebase/auth';
-import { SKILL_OPTIONS, LANGUAGE_OPTIONS } from './src/constants';
+import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from './src/constants';
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>('login');
@@ -35,7 +37,8 @@ function App(): React.JSX.Element {
   const [otherLanguages, setOtherLanguages] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [contactEmail, setContactEmail] = useState('');
-  const [availability, setAvailability] = useState('');
+  const [availability, setAvailability] = useState<string[]>([]);
+  const [otherAvailability, setOtherAvailability] = useState('');
   const [profileMessage, setProfileMessage] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -51,6 +54,19 @@ function App(): React.JSX.Element {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(false);
   const [invitesMessage, setInvitesMessage] = useState('');
+
+  // ----- Extras list / profile detail screen state (admin) -----
+  const [extras, setExtras] = useState<ExtraSummary[]>([]);
+  const [extrasLoading, setExtrasLoading] = useState(false);
+  const [extrasMessage, setExtrasMessage] = useState('');
+  const [skillFilter, setSkillFilter] = useState<string[]>([]);
+  const [genderFilter, setGenderFilter] = useState('');
+  const [availabilityFilter, setAvailabilityFilter] = useState<string[]>([]);
+  const [minAgeFilter, setMinAgeFilter] = useState('');
+  const [maxAgeFilter, setMaxAgeFilter] = useState('');
+  const [selectedExtraProfile, setSelectedExtraProfile] = useState<ExtraProfileDetail | null>(null);
+  const [extraDetailLoading, setExtraDetailLoading] = useState(false);
+  const [extraDetailMessage, setExtraDetailMessage] = useState('');
 
   const handleLogin = async () => {
     try {
@@ -137,7 +153,9 @@ function App(): React.JSX.Element {
       setOtherLanguages(fetchedLanguages.filter((l) => !LANGUAGE_OPTIONS.includes(l)).join(', '));
       setPhoneNumber(data.phoneNumber ?? '');
       setContactEmail(data.contactEmail || email);
-      setAvailability(data.availability ?? '');
+      const fetchedAvailability: string[] = data.availability ?? [];
+      setAvailability(fetchedAvailability.filter((a) => AVAILABILITY_OPTIONS.includes(a)));
+      setOtherAvailability(fetchedAvailability.filter((a) => !AVAILABILITY_OPTIONS.includes(a)).join(', '));
       setFacePhotoUrl(data.facePhotoUrl ?? '');
       setFullBodyPhotoUrl(data.fullBodyPhotoUrl ?? '');
       setPendingFacePhoto(null);
@@ -209,7 +227,10 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
           ],
           phoneNumber: phoneNumber || null,
           contactEmail: contactEmail || null,
-          availability: availability || null,
+          availability: [
+            ...availability,
+            ...otherAvailability.split(',').map((a) => a.trim()).filter((a) => a.length > 0),
+          ],
           facePhotoUrl: newFacePhotoUrl,
           fullBodyPhotoUrl: newFullBodyPhotoUrl,
         }),
@@ -285,12 +306,107 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     }
   };
 
+  const loadExtras = async () => {
+    setExtrasLoading(true);
+    setExtrasMessage('');
+    try {
+      const params = new URLSearchParams();
+      if (skillFilter.length > 0) params.append('skill', skillFilter.join(','));
+      if (genderFilter) params.append('gender', genderFilter);
+      if (availabilityFilter.length > 0) params.append('availability', availabilityFilter.join(','));
+      if (minAgeFilter) params.append('minAge', minAgeFilter);
+      if (maxAgeFilter) params.append('maxAge', maxAgeFilter);
+      const query = params.toString() ? `?${params.toString()}` : '';
+
+      const response = await fetch(`${API_URL}/profiles${query}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setExtrasMessage(`Could not load extras: ${data.error}`);
+        return;
+      }
+
+      setExtras(data);
+    } catch (error) {
+      setExtrasMessage('Something went wrong loading extras.');
+    } finally {
+      setExtrasLoading(false);
+    }
+  };
+
+  const loadExtraProfile = async (id: string) => {
+    setExtraDetailLoading(true);
+    setExtraDetailMessage('');
+    setSelectedExtraProfile(null);
+    try {
+      const response = await fetch(`${API_URL}/profiles/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setExtraDetailMessage(`Could not load profile: ${data.error}`);
+        return;
+      }
+
+      setSelectedExtraProfile(data);
+    } catch (error) {
+      setExtraDetailMessage('Something went wrong loading that profile.');
+    } finally {
+      setExtraDetailLoading(false);
+    }
+  };
+
+  const handleSelectExtra = (id: string) => {
+    setScreen('extraProfileDetail');
+    loadExtraProfile(id);
+  };
+
+  const toggleSkillFilter = (skill: string) => {
+    setSkillFilter((prev) => (prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]));
+  };
+
+  const toggleAvailabilityFilter = (day: string) => {
+    setAvailabilityFilter((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+  };
+
+  const handleClearFilters = async () => {
+    setSkillFilter([]);
+    setGenderFilter('');
+    setAvailabilityFilter([]);
+    setMinAgeFilter('');
+    setMaxAgeFilter('');
+    setExtrasLoading(true);
+    setExtrasMessage('');
+    try {
+      const response = await fetch(`${API_URL}/profiles`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setExtrasMessage(`Could not load extras: ${data.error}`);
+        return;
+      }
+      setExtras(data);
+    } catch (error) {
+      setExtrasMessage('Something went wrong loading extras.');
+    } finally {
+      setExtrasLoading(false);
+    }
+  };
+
   const toggleSkill = (skill: string) => {
     setSkills((prev) => (prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]));
   };
 
   const toggleLanguage = (language: string) => {
     setLanguages((prev) => (prev.includes(language) ? prev.filter((l) => l !== language) : [...prev, language]));
+  };
+
+  const toggleAvailability = (day: string) => {
+  setAvailability((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
   };
 
   useEffect(() => {
@@ -300,7 +416,10 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     if (screen === 'invites') {
       loadInvites();
     }
-  }, [screen]);
+    if (screen === 'extrasList') {
+      loadExtras();
+    }
+  }, [screen, skillFilter, genderFilter, availabilityFilter]);
 
   if (screen === 'login') {
     return (
@@ -351,7 +470,9 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
         setContactEmail={setContactEmail}
         contactError={contactError}
         availability={availability}
-        setAvailability={setAvailability}
+        onToggleAvailability={toggleAvailability}
+        otherAvailability={otherAvailability}
+        setOtherAvailability={setOtherAvailability}
         loading={profileLoading}
         message={profileMessage}
         onSave={saveProfile}
@@ -385,6 +506,43 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
         />
       );
     }
+
+  if (screen === 'extrasList') {
+    return (
+      <ExtrasListScreen
+        extras={extras}
+        loading={extrasLoading}
+        message={extrasMessage}
+        skillFilter={skillFilter}
+        onSelectSkillFilter={toggleSkillFilter}
+        onClearSkillFilter={() => setSkillFilter([])}
+        genderFilter={genderFilter}
+        onSelectGenderFilter={setGenderFilter}
+        availabilityFilter={availabilityFilter}
+        onSelectAvailabilityFilter={toggleAvailabilityFilter}
+        onClearAvailabilityFilter={() => setAvailabilityFilter([])}
+        minAgeFilter={minAgeFilter}
+        setMinAgeFilter={setMinAgeFilter}
+        maxAgeFilter={maxAgeFilter}
+        setMaxAgeFilter={setMaxAgeFilter}
+        onApplyAgeFilter={loadExtras}
+        onSelectExtra={handleSelectExtra}
+        onClearFilters={handleClearFilters}
+        onBack={() => setScreen('home')}
+      />
+    );
+  }
+
+  if (screen === 'extraProfileDetail') {
+    return (
+      <ExtraProfileDetailScreen
+        profile={selectedExtraProfile}
+        loading={extraDetailLoading}
+        message={extraDetailMessage}
+        onBack={() => setScreen('extrasList')}
+      />
+    );
+  }
 
   if (screen === 'createShootDay') {
     return <CreateShootDayScreen token={token} onBack={() => setScreen('home')} />;

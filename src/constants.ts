@@ -32,3 +32,12 @@ export const LANGUAGE_OPTIONS = [
   'Finnish',
   'Icelandic',
 ];
+
+export const AVAILABILITY_OPTIONS = [
+  'Everyday',
+  'Mondays',
+  'Tuesdays',
+  'Wednesdays',
+  'Thursdays',
+  'Fridays',
+];

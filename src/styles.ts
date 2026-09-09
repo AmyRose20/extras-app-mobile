@@ -173,4 +173,42 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+    // One label:value line in a read-only detail view (profile detail screen).
+  detailRow: {
+    fontSize: 16,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+    lineHeight: 22,
+  },
+
+  // Heading that separates sections within a card (e.g. "Contact Info").
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+
+  // Generic horizontal row with even gaps between children.
+  row: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+
+  // Muted summary line (e.g. "Active filters: ...").
+  filterSummary: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+
+  photoImage: {
+    borderRadius: 8,
+  },
+  photoPlaceholder: {
+    borderRadius: 8,
+    backgroundColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

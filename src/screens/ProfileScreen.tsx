@@ -2,7 +2,7 @@ import React from 'react';
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, Image, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { styles } from '../styles';
-import { SKILL_OPTIONS, LANGUAGE_OPTIONS } from '../constants';
+import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from '../constants';
 import ChipMultiSelect from '../components/ChipMultiSelect';
 
 type Props = {
@@ -26,8 +26,10 @@ type Props = {
   contactEmail: string;
   setContactEmail: (value: string) => void;
   contactError: string;
-  availability: string;
-  setAvailability: (value: string) => void;
+  availability: string[];
+  onToggleAvailability: (day: string) => void;
+  otherAvailability: string;
+  setOtherAvailability: (value: string) => void;
   loading: boolean;
   message: string;
   onSave: () => void;
@@ -87,7 +89,9 @@ function ProfileScreen({
   setContactEmail,
   contactError,
   availability,
-  setAvailability,
+  onToggleAvailability,
+  otherAvailability,
+  setOtherAvailability,
   loading,
   message,
   onSave,
@@ -106,6 +110,7 @@ function ProfileScreen({
 }: Props) {
   const allSkills = [...skills, ...otherSkills.split(',').map((s) => s.trim()).filter(Boolean)];
   const allLanguages = [...languages, ...otherLanguages.split(',').map((l) => l.trim()).filter(Boolean)];
+  const allAvailability = [...availability, ...otherAvailability.split(',').map((a) => a.trim()).filter(Boolean)];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -161,12 +166,13 @@ function ProfileScreen({
               onOtherTextChange={setOtherLanguages}
             />
 
-            <Text style={styles.fieldLabel}>Availability</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Availability"
-              value={availability}
-              onChangeText={setAvailability}
+            <ChipMultiSelect
+              label="Availability"
+              options={AVAILABILITY_OPTIONS}
+              selected={availability}
+              onToggle={onToggleAvailability}
+              otherText={otherAvailability}
+              onOtherTextChange={setOtherAvailability}
             />
 
             <View style={{ flexDirection: 'row', gap: 16 }}>
@@ -225,7 +231,7 @@ function ProfileScreen({
             <Text style={styles.message}>
               <Text style={styles.fieldLabel}>Languages: </Text>{allLanguages.length > 0 ? allLanguages.join(', ') : 'Not set'}
             </Text>
-            <Text style={styles.message}><Text style={styles.fieldLabel}>Availability: </Text>{availability || 'Not set'}</Text>
+            <Text style={styles.message}><Text style={[styles.fieldLabel, { fontSize: 16 }]}>Availability: </Text>{allAvailability.length > 0 ? allAvailability.join(', ') : 'Not set'}</Text>
 
           <View style={[{ flexDirection: 'row', gap: 16 }, styles.buttonSpacing]}>
             <View>
