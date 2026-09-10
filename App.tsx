@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Screen, Role, Invite, ExtraSummary, ExtraProfileDetail, Tally } from './src/types';
+import { Screen, Role, Invite, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary } from './src/types';
 import { API_URL } from './src/api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { getStorage, ref, putFile, getDownloadURL } from '@react-native-firebase/storage';
@@ -12,8 +12,11 @@ import CreateCallRequestScreen from './src/screens/CreateCallRequestScreen';
 import CallRequestStatusScreen from './src/screens/CallRequestStatusScreen';
 import ExtrasListScreen from './src/screens/ExtrasListScreen';
 import ExtraProfileDetailScreen from './src/screens/ExtraProfileDetailScreen';
+import ShootDaysListScreen from './src/screens/ShootDaysListScreen';
+import ShootDayDetailScreen from './src/screens/ShootDayDetailScreen';
 import { getAuth, signInWithCustomToken, signOut } from '@react-native-firebase/auth';
 import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from './src/constants';
+import InviteListScreen from './src/screens/InviteListScreen';
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>('login');
@@ -25,6 +28,21 @@ function App(): React.JSX.Element {
   const [role, setRole] = useState<Role>('EXTRA');
   const [userId, setUserId] = useState('');
   const [activeCallRequestId, setActiveCallRequestId] = useState('');
+
+  const [callRequestStatusReturnTo, setCallRequestStatusReturnTo] = useState<Screen>('home');
+  const [inviteListStatus, setInviteListStatus] = useState<'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'>('PENDING');
+  const [extraProfileReturnTo, setExtraProfileReturnTo] = useState<Screen>('extrasList');
+
+  const handleViewInvites = (status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED') => {
+    setInviteListStatus(status);
+    setScreen('inviteList');
+  };
+
+  const handleViewResponses = (callRequestId: string) => {
+    setActiveCallRequestId(callRequestId);
+    setCallRequestStatusReturnTo('shootDayDetail');
+    setScreen('callRequestStatus');
+  };
 
 
   // ----- Profile screen state -----
@@ -67,7 +85,21 @@ function App(): React.JSX.Element {
   const [maxAgeFilter, setMaxAgeFilter] = useState('');
   const [selectedExtraProfile, setSelectedExtraProfile] = useState<ExtraProfileDetail | null>(null);
   const [extraDetailLoading, setExtraDetailLoading] = useState(false);
-  const [extraDetailMessage, setExtraDetailMessage] = useState('');
+    const [extraDetailMessage, setExtraDetailMessage] = useState('');
+
+  // ----- Shoot days list / detail screen state (admin) -----
+  const [shootDays, setShootDays] = useState<ShootDaySummary[]>([]);
+  const [shootDaysLoading, setShootDaysLoading] = useState(false);
+  const [shootDaysMessage, setShootDaysMessage] = useState('');
+  const [selectedShootDay, setSelectedShootDay] = useState<ShootDayDetail | null>(null);
+  const [shootDayDetailLoading, setShootDayDetailLoading] = useState(false);
+  const [shootDayDetailMessage, setShootDayDetailMessage] = useState('');
+  const [isEditingDate, setIsEditingDate] = useState(false);
+  const [editDateTime, setEditDateTime] = useState<Date | null>(null);
+  const [editingCallRequestId, setEditingCallRequestId] = useState<string | null>(null);
+  const [editDescription, setEditDescription] = useState('');
+  const [editQuantity, setEditQuantity] = useState('');
+
   const [extraTally, setExtraTally] = useState<Tally | null>(null);
 
   const handleLogin = async () => {
@@ -396,10 +428,146 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     }
   };
 
-  const handleSelectExtra = (id: string) => {
+  const handleSelectExtra = (id: string, returnTo: Screen = 'extrasList') => {
+    setExtraProfileReturnTo(returnTo);
     setScreen('extraProfileDetail');
     loadExtraProfile(id);
     loadExtraTally(id);
+  };
+
+  const loadShootDays = async () => {
+    setShootDaysLoading(true);
+    setShootDaysMessage('');
+    try {
+      const response = await fetch(`${API_URL}/shoot-days`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setShootDaysMessage(`Could not load shoot days: ${data.error}`);
+        return;
+      }
+
+      setShootDays(data);
+    } catch (error) {
+      setShootDaysMessage('Something went wrong loading shoot days.');
+    } finally {
+      setShootDaysLoading(false);
+    }
+  };
+
+  const loadShootDayDetail = async (id: string) => {
+    setShootDayDetailLoading(true);
+    setShootDayDetailMessage('');
+    setSelectedShootDay(null);
+    setIsEditingDate(false);
+    setEditingCallRequestId(null);
+    try {
+      const response = await fetch(`${API_URL}/shoot-days/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setShootDayDetailMessage(`Could not load shoot day: ${data.error}`);
+        return;
+      }
+
+      setSelectedShootDay(data);
+    } catch (error) {
+      setShootDayDetailMessage('Something went wrong loading that shoot day.');
+    } finally {
+      setShootDayDetailLoading(false);
+    }
+  };
+
+  const handleSelectShootDay = (id: string) => {
+    setScreen('shootDayDetail');
+    loadShootDayDetail(id);
+  };
+
+  const handleStartEditDate = () => {
+    if (!selectedShootDay) return;
+    setEditDateTime(new Date(selectedShootDay.date));
+    setIsEditingDate(true);
+  };
+
+  const handleCancelEditDate = () => {
+    setIsEditingDate(false);
+    setEditDateTime(null);
+  };
+
+  const handleSaveDate = async () => {
+    if (!editDateTime || !selectedShootDay) return;
+    setShootDayDetailMessage('');
+    try {
+      const response = await fetch(`${API_URL}/shoot-days/${selectedShootDay.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ date: editDateTime.toISOString() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setShootDayDetailMessage(`Could not update date/time: ${data.error}`);
+        return;
+      }
+
+      setIsEditingDate(false);
+      setEditDateTime(null);
+      loadShootDayDetail(selectedShootDay.id);
+    } catch (error) {
+      setShootDayDetailMessage('Something went wrong updating that shoot day.');
+    }
+  };
+
+  const handleStartEditCallRequest = (callRequest: CallRequestSummary) => {
+    setEditingCallRequestId(callRequest.id);
+    setEditDescription(callRequest.description);
+    setEditQuantity(String(callRequest.quantityNeeded));
+  };
+
+  const handleCancelEditCallRequest = () => {
+    setEditingCallRequestId(null);
+    setEditDescription('');
+    setEditQuantity('');
+  };
+
+  const handleSaveCallRequest = async () => {
+    if (!editingCallRequestId || !selectedShootDay) return;
+    setShootDayDetailMessage('');
+    try {
+      const response = await fetch(`${API_URL}/call-requests/${editingCallRequestId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          description: editDescription,
+          quantityNeeded: parseInt(editQuantity, 10),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setShootDayDetailMessage(`Could not update call request: ${data.error}`);
+        return;
+      }
+
+      setEditingCallRequestId(null);
+      setEditDescription('');
+      setEditQuantity('');
+      loadShootDayDetail(selectedShootDay.id);
+    } catch (error) {
+      setShootDayDetailMessage('Something went wrong updating that call request.');
+    }
   };
 
   const toggleSkillFilter = (skill: string) => {
@@ -457,6 +625,9 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     }
     if (screen === 'extrasList') {
       loadExtras();
+    }
+    if (screen === 'shootDaysList') {
+      loadShootDays();
     }
   }, [screen, skillFilter, genderFilter, availabilityFilter]);
 
@@ -579,8 +750,46 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
         profile={selectedExtraProfile}
         loading={extraDetailLoading}
         message={extraDetailMessage}
-        onBack={() => setScreen('extrasList')}
+        onBack={() => setScreen(extraProfileReturnTo)}
         tally={extraTally}
+      />
+    );
+  }
+
+  if (screen === 'shootDaysList') {
+    return (
+      <ShootDaysListScreen
+        shootDays={shootDays}
+        loading={shootDaysLoading}
+        message={shootDaysMessage}
+        onSelectShootDay={handleSelectShootDay}
+        onBack={() => setScreen('home')}
+      />
+    );
+  }
+
+  if (screen === 'shootDayDetail') {
+    return (
+      <ShootDayDetailScreen
+        shootDay={selectedShootDay}
+        loading={shootDayDetailLoading}
+        message={shootDayDetailMessage}
+        onBack={() => setScreen('shootDaysList')}
+        isEditingDate={isEditingDate}
+        onStartEditDate={handleStartEditDate}
+        onCancelEditDate={handleCancelEditDate}
+        editDateTime={editDateTime}
+        onDateTimeChange={setEditDateTime}
+        onSaveDate={handleSaveDate}
+        editingCallRequestId={editingCallRequestId}
+        editDescription={editDescription}
+        setEditDescription={setEditDescription}
+        editQuantity={editQuantity}
+        setEditQuantity={setEditQuantity}
+        onStartEditCallRequest={handleStartEditCallRequest}
+        onCancelEditCallRequest={handleCancelEditCallRequest}
+        onSaveCallRequest={handleSaveCallRequest}
+        onViewResponses={handleViewResponses}
       />
     );
   }
@@ -594,8 +803,9 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
       <CreateCallRequestScreen
         token={token}
         onBack={() => setScreen('home')}
-        onCreated={(callRequestId) => {
+                onCreated={(callRequestId) => {
           setActiveCallRequestId(callRequestId);
+          setCallRequestStatusReturnTo('home');
           setScreen('callRequestStatus');
         }}
       />
@@ -607,7 +817,20 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
       <CallRequestStatusScreen
         token={token}
         callRequestId={activeCallRequestId}
-        onBack={() => setScreen('home')}
+        onBack={() => setScreen(callRequestStatusReturnTo)}
+        onViewInvites={handleViewInvites}
+      />
+    );
+  }
+
+  if (screen === 'inviteList') {
+    return (
+      <InviteListScreen
+        token={token}
+        callRequestId={activeCallRequestId}
+        status={inviteListStatus}
+        onBack={() => setScreen('callRequestStatus')}
+        onSelectExtra={(id) => handleSelectExtra(id, 'inviteList')}
       />
     );
   }

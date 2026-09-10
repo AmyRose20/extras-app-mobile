@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, Text, TouchableOpacity } from 'react-native';
+import { SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import { styles } from '../styles';
 import { API_URL } from '../api';
 
@@ -7,16 +7,20 @@ type Tally = {
   needed: number;
   accepted: number;
   declined: number;
+  cancelled: number;
   pending: number;
 };
+
+type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
 
 type Props = {
   token: string;
   callRequestId: string;
   onBack: () => void;
+  onViewInvites: (status: InviteStatus) => void;
 };
 
-function CallRequestStatusScreen({ token, callRequestId, onBack }: Props) {
+function CallRequestStatusScreen({ token, callRequestId, onBack, onViewInvites }: Props) {
   const [tally, setTally] = useState<Tally | null>(null);
   const [description, setDescription] = useState('');
   const [message, setMessage] = useState('');
@@ -48,16 +52,31 @@ function CallRequestStatusScreen({ token, callRequestId, onBack }: Props) {
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Call Request Status</Text>
 
-      {description ? <Text style={styles.message}>{description}</Text> : null}
+      <View style={styles.card}>
+        {description ? <Text style={styles.cardTitle}>{description}</Text> : null}
 
-      {tally ? (
-        <>
-          <Text style={styles.message}>Needed: {tally.needed}</Text>
-          <Text style={styles.message}>Accepted: {tally.accepted}</Text>
-          <Text style={styles.message}>Declined: {tally.declined}</Text>
-          <Text style={styles.message}>Pending: {tally.pending}</Text>
-        </>
-      ) : null}
+        {tally ? (
+          <>
+            <Text style={styles.cardDetail}>Needed: {tally.needed}</Text>
+
+            <TouchableOpacity onPress={() => onViewInvites('ACCEPTED')}>
+              <Text style={styles.editLinkText}>Accepted: {tally.accepted}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => onViewInvites('DECLINED')}>
+              <Text style={styles.editLinkText}>Declined: {tally.declined}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => onViewInvites('CANCELLED')}>
+              <Text style={styles.editLinkText}>Cancelled: {tally.cancelled}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => onViewInvites('PENDING')}>
+              <Text style={styles.editLinkText}>Pending: {tally.pending}</Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
+      </View>
 
       {message ? <Text style={styles.message}>{message}</Text> : null}
 
@@ -66,7 +85,7 @@ function CallRequestStatusScreen({ token, callRequestId, onBack }: Props) {
       </TouchableOpacity>
 
       <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={onBack}>
-        <Text style={styles.buttonText}>Back to Home</Text>
+        <Text style={styles.buttonText}>Back</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

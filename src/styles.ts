@@ -194,6 +194,14 @@ export const styles = StyleSheet.create({
     marginTop: spacing.sm,
     textAlign: 'center',
   },
+  // Small blue underlined text link (e.g. "Edit" on a call request card).
+  editLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginTop: spacing.sm,
+    textDecorationLine: 'underline',
+  },
 
   savedPopup: {
     position: 'absolute',

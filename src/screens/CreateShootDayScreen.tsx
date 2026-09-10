@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SafeAreaView, Text, TextInput, TouchableOpacity } from 'react-native';
 import { styles } from '../styles';
 import { API_URL } from '../api';
+import { parseDDMMYYYY } from '../dateUtils';
 
 type Props = {
   token: string;
@@ -19,6 +20,13 @@ function CreateShootDayScreen({ token, onBack }: Props) {
 
   const handleCreate = async () => {
     setMessage('');
+
+    const parsedDate = parseDDMMYYYY(date);
+    if (!parsedDate) {
+      setMessage('Please enter a valid date in DD-MM-YYYY format.');
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/shoot-days`, {
         method: 'POST',
@@ -26,7 +34,7 @@ function CreateShootDayScreen({ token, onBack }: Props) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ productionName, date, location }),
+        body: JSON.stringify({ productionName, date: parsedDate.toISOString(), location }),
       });
 
       const data = await response.json();
@@ -58,7 +66,7 @@ function CreateShootDayScreen({ token, onBack }: Props) {
 
       <TextInput
         style={styles.input}
-        placeholder="Date (YYYY-MM-DD)"
+        placeholder="Date (DD-MM-YYYY)"
         value={date}
         onChangeText={setDate}
       />
@@ -84,8 +92,3 @@ function CreateShootDayScreen({ token, onBack }: Props) {
 }
 
 export default CreateShootDayScreen;
-
-
-/* Note the message here shows the new shoot day's ID after creating it 
-— I'll need to copy that ID to use in the next screen (Create Call Request), 
-same as I did manually in Postman earlier. */

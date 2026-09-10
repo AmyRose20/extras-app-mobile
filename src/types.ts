@@ -9,7 +9,9 @@ export type Screen =
   | 'createCallRequest'
   | 'callRequestStatus'
   | 'extrasList'
-  | 'extraProfileDetail';
+  | 'extraProfileDetail'
+  | 'shootDaysList'
+  | 'shootDayDetail';
 
 export type Role = 'ADMIN' | 'EXTRA';
 
@@ -32,6 +34,29 @@ export type Tally = {
   declined: number;
   cancelled: number;
   threeStrikes: boolean;
+};
+
+// One row in the admin's shoot days list (matches GET /shoot-days)
+export type ShootDaySummary = {
+  id: string;
+  productionName: string;
+  date: string;
+  location: string;
+  isPast: boolean;
+};
+
+// One call request nested inside a shoot day's detail view
+export type CallRequestSummary = {
+  id: string;
+  description: string;
+  quantityNeeded: number;
+  criteria: Record<string, unknown>;
+  createdAt: string;
+};
+
+// A single shoot day plus its call requests (matches GET /shoot-days/:id)
+export type ShootDayDetail = ShootDaySummary & {
+  callRequests: CallRequestSummary[];
 };
 
 // One row in the admin's extras list (matches GET /profiles)
