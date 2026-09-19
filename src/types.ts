@@ -11,7 +11,9 @@ export type Screen =
   | 'extrasList'
   | 'extraProfileDetail'
   | 'shootDaysList'
-  | 'shootDayDetail';
+  | 'shootDayDetail'
+  | 'inviteList'
+  | 'bulkCreateShootDays';
 
 export type Role = 'ADMIN' | 'EXTRA';
 

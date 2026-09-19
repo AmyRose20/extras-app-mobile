@@ -202,7 +202,12 @@ export const styles = StyleSheet.create({
     marginTop: spacing.sm,
     textDecorationLine: 'underline',
   },
-
+  fieldError: {
+    color: colors.error,
+    fontSize: 13,
+    marginTop: 2,
+    marginBottom: spacing.sm,
+  },
   savedPopup: {
     position: 'absolute',
     top: '45%',
@@ -213,6 +218,8 @@ export const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 24,
     alignItems: 'center',
+    zIndex: 10,
+    elevation: 10,
   },
   savedPopupText: {
     color: '#fff',

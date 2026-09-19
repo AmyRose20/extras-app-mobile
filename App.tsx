@@ -17,6 +17,7 @@ import ShootDayDetailScreen from './src/screens/ShootDayDetailScreen';
 import { getAuth, signInWithCustomToken, signOut } from '@react-native-firebase/auth';
 import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from './src/constants';
 import InviteListScreen from './src/screens/InviteListScreen';
+import BulkCreateShootDaysScreen from './src/screens/BulkCreateShootDaysScreen';
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>('login');
@@ -823,7 +824,7 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     );
   }
 
-  if (screen === 'inviteList') {
+    if (screen === 'inviteList') {
     return (
       <InviteListScreen
         token={token}
@@ -833,6 +834,10 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
         onSelectExtra={(id) => handleSelectExtra(id, 'inviteList')}
       />
     );
+  }
+
+  if (screen === 'bulkCreateShootDays') {
+    return <BulkCreateShootDaysScreen token={token} onBack={() => setScreen('home')} />;
   }
 
   // Fallback — shouldn't normally be reached, but keeps TypeScript happy

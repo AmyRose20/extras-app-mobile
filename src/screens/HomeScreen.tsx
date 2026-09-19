@@ -15,7 +15,7 @@ type Props = {
   userName: string;
   role: Role;
   token: string;
-  onNavigate: (screen: 'profile' | 'invites' | 'createShootDay' | 'createCallRequest' | 'callRequestStatus' | 'extrasList' | 'shootDaysList') => void;
+  onNavigate: (screen: 'profile' | 'invites' | 'createShootDay' | 'createCallRequest' | 'callRequestStatus' | 'extrasList' | 'shootDaysList' | 'bulkCreateShootDays') => void;
   onLogout: () => void;
 };
 
@@ -91,6 +91,10 @@ function HomeScreen({ userName, role, token,  onNavigate, onLogout }: Props) {
 
           <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('shootDaysList')}>
             <Text style={styles.buttonText}>Shoot Days</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('bulkCreateShootDays')}>
+            <Text style={styles.buttonText}>Bulk Create Shoot Days</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('extrasList')}>
