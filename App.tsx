@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View } from 'react-native';
-import { Screen, Role, Invite, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary } from './src/types';
+import { Screen, Role, Invite, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary, DeletionRequestSummary } from './src/types';
 import { API_URL } from './src/api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { getStorage, ref, putFile, getDownloadURL } from '@react-native-firebase/storage';
@@ -20,6 +20,7 @@ import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from './src/con
 import InviteListScreen from './src/screens/InviteListScreen';
 import BulkCreateShootDaysScreen from './src/screens/BulkCreateShootDaysScreen';
 import HeaderMenu from './src/components/HeaderMenu';
+import DeletionRequestsScreen from './src/screens/DeletionRequestsScreen';
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>('login');
@@ -52,6 +53,8 @@ function App(): React.JSX.Element {
   // ----- Profile screen state -----
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
+  const [deletionRequestStatus, setDeletionRequestStatus] = useState('NONE');
+  const [deletionActionLoading, setDeletionActionLoading] = useState(false);
   const [heightCm, setHeightCm] = useState('');
   const [skills, setSkills] = useState<string[]>([]);
   const [otherSkills, setOtherSkills] = useState('');
@@ -89,7 +92,10 @@ function App(): React.JSX.Element {
   const [maxAgeFilter, setMaxAgeFilter] = useState('');
   const [selectedExtraProfile, setSelectedExtraProfile] = useState<ExtraProfileDetail | null>(null);
   const [extraDetailLoading, setExtraDetailLoading] = useState(false);
-    const [extraDetailMessage, setExtraDetailMessage] = useState('');
+  const [extraDetailMessage, setExtraDetailMessage] = useState('');
+  const [deletionRequestsList, setDeletionRequestsList] = useState<DeletionRequestSummary[]>([]);
+  const [deletionRequestsLoading, setDeletionRequestsLoading] = useState(false);
+  const [deletionRequestsMessage, setDeletionRequestsMessage] = useState('');
 
   // ----- Shoot days list / detail screen state (admin) -----
   const [shootDays, setShootDays] = useState<ShootDaySummary[]>([]);
@@ -199,6 +205,7 @@ function App(): React.JSX.Element {
       setFullBodyPhotoUrl(data.fullBodyPhotoUrl ?? '');
       setPendingFacePhoto(null);
       setPendingFullBodyPhoto(null);
+      setDeletionRequestStatus(data.deletionRequestStatus ?? 'NONE');
     } catch (error) {
       setProfileMessage('Something went wrong loading your profile.');
     } finally {
@@ -312,6 +319,56 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     }
   };
 
+  const requestAccountDeletion = async () => {
+  setDeletionActionLoading(true);
+  setProfileMessage('');
+  try {
+    const response = await fetch(`${API_URL}/deletion-requests/me`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setProfileMessage(`Could not request deletion: ${data.error}`);
+      return;
+    }
+
+    setDeletionRequestStatus(data.deletionRequestStatus);
+  } catch (error) {
+    setProfileMessage('Something went wrong requesting deletion.');
+  } finally {
+    setDeletionActionLoading(false);
+  }
+};
+
+  const cancelAccountDeletion = async () => {
+    setDeletionActionLoading(true);
+    setProfileMessage('');
+    try {
+      const response = await fetch(`${API_URL}/deletion-requests/me`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setProfileMessage(`Could not cancel deletion request: ${data.error}`);
+        return;
+      }
+
+      setDeletionRequestStatus(data.deletionRequestStatus);
+    } catch (error) {
+      setProfileMessage('Something went wrong cancelling the deletion request.');
+    } finally {
+      setDeletionActionLoading(false);
+    }
+  };
+
   const handleCancelEdit = () => {
     loadProfile();
     setIsEditingProfile(false);
@@ -414,6 +471,91 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
       setExtraDetailLoading(false);
     }
   };
+
+  const loadDeletionRequests = async () => {
+  setDeletionRequestsLoading(true);
+  setDeletionRequestsMessage('');
+  try {
+    const response = await fetch(`${API_URL}/deletion-requests`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setDeletionRequestsMessage(`Could not load deletion requests: ${data.error}`);
+      return;
+    }
+
+    setDeletionRequestsList(data);
+  } catch (error) {
+    setDeletionRequestsMessage('Something went wrong loading deletion requests.');
+  } finally {
+    setDeletionRequestsLoading(false);
+  }
+};
+
+const approveDeletionRequest = async (userId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/deletion-requests/${userId}/approve`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setDeletionRequestsMessage(`Could not approve: ${data.error}`);
+      return;
+    }
+
+    setDeletionRequestsList((prev) => prev.filter((r) => r.id !== userId));
+  } catch (error) {
+    setDeletionRequestsMessage('Something went wrong approving that request.');
+  }
+};
+
+const denyDeletionRequest = async (userId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/deletion-requests/${userId}/deny`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setDeletionRequestsMessage(`Could not deny: ${data.error}`);
+      return;
+    }
+
+    setDeletionRequestsList((prev) => prev.filter((r) => r.id !== userId));
+  } catch (error) {
+    setDeletionRequestsMessage('Something went wrong denying that request.');
+  }
+};
+
+const adminRequestDeletionForExtra = async (userId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/deletion-requests/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setExtraDetailMessage(`Could not request deletion: ${data.error}`);
+      return;
+    }
+
+    if (selectedExtraProfile) {
+      loadExtraProfile(selectedExtraProfile.id);
+    }
+  } catch (error) {
+    setExtraDetailMessage('Something went wrong requesting deletion.');
+  }
+};
 
   const loadExtraTally = async (extraProfileId: string) => {
     setExtraTally(null);
@@ -643,7 +785,11 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
         loadShootDays();
       } else {
         loadInvites();
+        loadProfile();
       }
+    }
+    if (screen === 'deletionRequests') {
+      loadDeletionRequests();
     }
   }, [screen, skillFilter, genderFilter, availabilityFilter, role]);
 
@@ -720,6 +866,7 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
           onPickFullBodyPhoto={handlePickFullBodyPhoto}
           uploadingPhoto={uploadingPhoto}
           showSavedPopup={showSavedPopup}
+          deletionRequestStatus={deletionRequestStatus}
         />
       );
     }
@@ -771,6 +918,24 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
           message={extraDetailMessage}
           onBack={() => setScreen(extraProfileReturnTo)}
           tally={extraTally}
+          onRequestDeletion={() => {
+            if (selectedExtraProfile) {
+              adminRequestDeletionForExtra(selectedExtraProfile.userId);
+            }
+          }}
+        />
+      );
+    }
+
+    if (screen === 'deletionRequests') {
+      return (
+        <DeletionRequestsScreen
+          requests={deletionRequestsList}
+          loading={deletionRequestsLoading}
+          message={deletionRequestsMessage}
+          onApprove={approveDeletionRequest}
+          onDeny={denyDeletionRequest}
+          onBack={() => setScreen('home')}
         />
       );
     }
@@ -882,6 +1047,11 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
           isHome={screen === 'home'}
           onGoHome={() => setScreen('home')}
           onLogout={handleLogout}
+          showDeleteAccount={role === 'EXTRA'}
+          deletionRequestStatus={deletionRequestStatus}
+          onRequestDeletion={requestAccountDeletion}
+          onCancelDeletion={cancelAccountDeletion}
+          deletionActionLoading={deletionActionLoading}
         />
       )}
     </View>

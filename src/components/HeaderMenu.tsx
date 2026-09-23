@@ -1,14 +1,28 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { colors, spacing } from '../styles';
 
 type Props = {
   isHome: boolean;
   onGoHome: () => void;
   onLogout: () => void;
+  showDeleteAccount: boolean;
+  deletionRequestStatus: string;
+  onRequestDeletion: () => void;
+  onCancelDeletion: () => void;
+  deletionActionLoading: boolean;
 };
 
-function HeaderMenu({ isHome, onGoHome, onLogout }: Props) {
+function HeaderMenu({
+  isHome,
+  onGoHome,
+  onLogout,
+  showDeleteAccount,
+  deletionRequestStatus,
+  onRequestDeletion,
+  onCancelDeletion,
+  deletionActionLoading,
+}: Props) {
   const [open, setOpen] = useState(false);
 
   const handleGoHome = () => {
@@ -20,6 +34,29 @@ function HeaderMenu({ isHome, onGoHome, onLogout }: Props) {
   const handleLogout = () => {
     setOpen(false);
     onLogout();
+  };
+
+  const handleDeleteAccountPress = () => {
+    setOpen(false);
+    if (deletionRequestStatus === 'PENDING') {
+      Alert.alert(
+        'Cancel Deletion Request?',
+        'Your account will no longer be scheduled for deletion.',
+        [
+          { text: 'No', style: 'cancel' },
+          { text: 'Yes, Cancel It', onPress: onCancelDeletion },
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Delete Account?',
+        'This sends a request to the admin to delete your account. You will not be able to log in once it is approved.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Request Deletion', style: 'destructive', onPress: onRequestDeletion },
+        ]
+      );
+    }
   };
 
   return (
@@ -41,6 +78,22 @@ function HeaderMenu({ isHome, onGoHome, onLogout }: Props) {
               Home
             </Text>
           </TouchableOpacity>
+
+          {showDeleteAccount && (
+            <>
+              <View style={localStyles.divider} />
+              <TouchableOpacity
+                style={localStyles.dropdownItem}
+                onPress={handleDeleteAccountPress}
+                disabled={deletionActionLoading}
+              >
+                <Text style={[localStyles.dropdownText, localStyles.logoutText]}>
+                  {deletionRequestStatus === 'PENDING' ? 'Cancel Deletion Request' : 'Delete My Account'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+
           <View style={localStyles.divider} />
           <TouchableOpacity style={localStyles.dropdownItem} onPress={handleLogout}>
             <Text style={[localStyles.dropdownText, localStyles.logoutText]}>Log Out</Text>
@@ -80,7 +133,7 @@ const localStyles = StyleSheet.create({
     position: 'absolute',
     top: 40,
     right: 0,
-    width: 130,
+    width: 170,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,

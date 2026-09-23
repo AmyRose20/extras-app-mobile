@@ -20,7 +20,7 @@ type Props = {
   shootDays: ShootDaySummary[];
   invites: Invite[];
   onNavigate: (
-    screen: 'profile' | 'invites' | 'createCallRequest' | 'extrasList' | 'shootDaysList' | 'bulkCreateShootDays'
+    screen: 'profile' | 'invites' | 'createCallRequest' | 'extrasList' | 'shootDaysList' | 'bulkCreateShootDays' | 'deletionRequests'
   ) => void;
   onSelectShootDay: (id: string) => void;
 };
@@ -148,6 +148,10 @@ function HomeScreen({ userName, role, token, shootDays, invites, onNavigate, onS
 
             <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('extrasList')}>
               <Text style={styles.buttonText}>View Extra Profiles</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('deletionRequests')}>
+              <Text style={styles.buttonText}>Deletion Requests</Text>
             </TouchableOpacity>
           </>
         )}

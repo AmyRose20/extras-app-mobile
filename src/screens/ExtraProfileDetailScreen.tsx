@@ -1,6 +1,6 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, Image, View } from 'react-native';
-import { styles } from '../styles';
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, Image, View, Alert } from 'react-native';
+import { styles, colors } from '../styles';
 import { ExtraProfileDetail, Tally } from '../types';
 
 function PhotoPreview({ uri, width, height }: { uri: string | null; width: number; height: number }) {
@@ -20,9 +20,22 @@ type Props = {
   message: string;
   onBack: () => void;
   tally: Tally | null;
+  onRequestDeletion: () => void;
 };
 
-function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally }: Props) {
+function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally, onRequestDeletion }: Props) {
+  const handleRequestDeletionPress = () => {
+    if (!profile) return;
+    Alert.alert(
+      'Request Account Deletion?',
+      `This sends a deletion request for ${profile.name}'s account to be reviewed.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Request Deletion', style: 'destructive', onPress: onRequestDeletion },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
@@ -80,6 +93,33 @@ function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally }: 
               ) : null}
             </View>
           ) : null}
+
+          <View style={[styles.card, styles.buttonSpacing]}>
+            <Text style={styles.widgetTitle}>Account</Text>
+            {profile.deletionRequestStatus === 'PENDING' ? (
+              <Text style={[styles.cardDetail, { color: colors.error, textAlign: 'center' }]}>
+                Account deletion already requested — awaiting approval.
+              </Text>
+            ) : (
+              <>
+                <Text style={styles.cardDetail}>Deleting this account will prevent the extra from logging in.
+                </Text>
+                  <TouchableOpacity
+                  style={{
+                    backgroundColor: colors.error,
+                    paddingVertical: 10,
+                    paddingHorizontal: 20,
+                    borderRadius: 8,
+                    alignSelf: 'center',
+                    marginTop: 8,
+                  }}
+                  onPress={handleRequestDeletionPress}
+                  >
+                  <Text style={[styles.buttonText, { fontSize: 14 }]}>Request Account Deletion</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
           </>
         ) : (
           <Text style={styles.message}>Profile not found.</Text>

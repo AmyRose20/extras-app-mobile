@@ -45,6 +45,7 @@ type Props = {
   onPickFullBodyPhoto: () => void;
   uploadingPhoto: boolean;
   showSavedPopup: boolean;
+  deletionRequestStatus: string;
 };
 
 function PhotoPreview({ uri, width, height }: { uri: string | null; width: number; height: number }) {
@@ -107,6 +108,7 @@ function ProfileScreen({
   onPickFullBodyPhoto,
   uploadingPhoto,
   showSavedPopup,
+  deletionRequestStatus,
 }: Props) {
   const allSkills = [...skills, ...otherSkills.split(',').map((s) => s.trim()).filter(Boolean)];
   const allLanguages = [...languages, ...otherLanguages.split(',').map((l) => l.trim()).filter(Boolean)];
@@ -116,6 +118,23 @@ function ProfileScreen({
     <SafeAreaView style={styles.container}>
       <ScrollView>
         <Text style={styles.title}>{isEditingProfile ? 'Edit My Profile' : 'My Profile'}</Text>
+
+        {!isEditingProfile && deletionRequestStatus === 'PENDING' && (
+          <View
+            style={{
+              backgroundColor: '#FEF2F2',
+              borderWidth: 1,
+              borderColor: '#FCA5A5',
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 16,
+            }}
+          >
+            <Text style={{ fontSize: 13, color: '#DC2626', textAlign: 'center', lineHeight: 18 }}>
+              Account deletion requested — awaiting admin approval.
+            </Text>
+          </View>
+        )}
 
         {loading ? (
           <Text style={styles.message}>Loading...</Text>

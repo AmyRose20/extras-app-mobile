@@ -15,6 +15,7 @@ export type Screen =
   | 'inviteList'
   | 'bulkCreateShootDays'
   | 'calendar';
+  | 'deletionRequests';
 
 export type Role = 'ADMIN' | 'EXTRA';
 
@@ -85,4 +86,15 @@ export type ExtraProfileDetail = {
   availability: string[];
   facePhotoUrl: string | null;
   fullBodyPhotoUrl: string | null;
+  deletionRequestStatus: string;
+};
+
+// One row in the admin's pending-deletion-requests list (matches GET /deletion-requests)
+export type DeletionRequestSummary = {
+  id: string;
+  name: string;
+  email: string;
+  deletionRequestedAt: string;
+  deletionRequestedBy: 'EXTRA' | 'ADMIN';
+  deletionReason: string | null;
 };
