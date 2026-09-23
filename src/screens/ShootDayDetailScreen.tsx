@@ -17,6 +17,7 @@ type Props = {
   editDateTime: Date | null;
   onDateTimeChange: (newDate: Date) => void;
   onSaveDate: () => void;
+  dateError: string;
 
     editingCallRequestId: string | null;
   editDescription: string;
@@ -40,6 +41,7 @@ function ShootDayDetailScreen({
   editDateTime,
   onDateTimeChange,
   onSaveDate,
+  dateError,
   editingCallRequestId,
   editDescription,
   setEditDescription,
@@ -89,6 +91,9 @@ function ShootDayDetailScreen({
               {isEditingDate ? (
                 <>
                   <Text style={styles.fieldLabel}>Date</Text>
+                  <View style={{ minHeight: 18 }}>
+                    {dateError ? <Text style={styles.fieldError}>{dateError}</Text> : null}
+                  </View>
                   <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
                     <Text>{editDateTime ? formatToDDMMYYYY(editDateTime) : ''}</Text>
                   </TouchableOpacity>

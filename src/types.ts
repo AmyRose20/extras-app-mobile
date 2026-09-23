@@ -13,7 +13,8 @@ export type Screen =
   | 'shootDaysList'
   | 'shootDayDetail'
   | 'inviteList'
-  | 'bulkCreateShootDays';
+  | 'bulkCreateShootDays'
+  | 'calendar';
 
 export type Role = 'ADMIN' | 'EXTRA';
 

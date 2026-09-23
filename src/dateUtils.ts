@@ -38,6 +38,18 @@ export function formatToHHMM(value: Date | string): string {
   return `${hours}:${minutes}`;
 }
 
+// Formats a Date (or ISO date string) as "YYYY-MM-DD" — the date-key format
+// react-native-calendars needs for marking and selecting days. Uses local
+// date components, same as the formatters above, so a shoot day lines up
+// with the same calendar day it's shown on everywhere else in the app.
+export function formatToCalendarKey(value: Date | string): string {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Combines a "DD-MM-YYYY" date string and "HH:MM" time string into one Date.
 // Returns null if either part is invalid.
 export function combineDateAndTime(dateStr: string, timeStr: string): Date | null {

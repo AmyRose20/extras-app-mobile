@@ -27,6 +27,7 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
   const [showCreatedPopup, setShowCreatedPopup] = useState(false);
   const [createdCount, setCreatedCount] = useState(0);
   const [locationError, setLocationError] = useState('');
+  const [dateError, setDateError] = useState('');
 
   const handleDateChange = (event: DateTimePickerEvent, selected?: Date) => {
     setShowDatePicker(false);
@@ -34,6 +35,7 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
       const combined = new Date(currentDateTime);
       combined.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
       setCurrentDateTime(combined);
+      setDateError('');
     }
   };
 
@@ -43,6 +45,7 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
       const combined = new Date(currentDateTime);
       combined.setHours(selected.getHours(), selected.getMinutes());
       setCurrentDateTime(combined);
+      setDateError('');
     }
   };
 
@@ -65,13 +68,22 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
 
   const handleSubmitAll = async () => {
     setMessage('');
+    setDateError('');
 
     if (!productionName.trim()) {
       setMessage('Enter a production name before creating these shoot days.');
       return;
     }
 
-    if (batchDays.length === 0) {
+    // If there's a day currently filled in that hasn't been added to the
+    // batch yet, include it automatically — you shouldn't have to press
+    // "Add Another Day" just to create a single shoot day.
+    const daysToCreate = [...batchDays];
+    if (currentLocation.trim()) {
+      daysToCreate.push({ date: currentDateTime, location: currentLocation.trim() });
+    }
+
+    if (daysToCreate.length === 0) {
       setMessage('Add at least one day before creating.');
       return;
     }
@@ -86,7 +98,7 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
         },
         body: JSON.stringify({
           productionName: productionName.trim(),
-          shootDays: batchDays.map((day) => ({
+          shootDays: daysToCreate.map((day) => ({
             date: day.date.toISOString(),
             location: day.location,
           })),
@@ -96,7 +108,7 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
       const data = await response.json();
 
       if (!response.ok) {
-        setMessage(`Could not create shoot days: ${data.error}`);
+        setDateError(data.error);
         return;
       }
 
@@ -105,6 +117,8 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
       setTimeout(() => setShowCreatedPopup(false), 3000);
       setBatchDays([]);
       setProductionName('');
+      setCurrentLocation('');
+      setCurrentDateTime(new Date());
     } catch (error) {
       setMessage('Something went wrong creating those shoot days.');
     } finally {
@@ -116,12 +130,14 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
     <SafeAreaView style={styles.container}>
       {showCreatedPopup ? (
         <View style={styles.savedPopup}>
-          <Text style={styles.savedPopupText}>Created {createdCount} shoot days.</Text>
+          <Text style={styles.savedPopupText}>
+            Created {createdCount} shoot {createdCount === 1 ? 'day' : 'days'}.
+          </Text>
         </View>
       ) : null}
 
       <ScrollView>
-        <Text style={styles.title}>Bulk Create Shoot Days</Text>
+        <Text style={styles.title}>Add Shoot Days</Text>
 
         <Text style={styles.fieldLabel}>Production Name</Text>
         <TextInput
@@ -148,6 +164,9 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
         </View>
 
         <Text style={styles.fieldLabel}>Date</Text>
+        <View style={{ minHeight: 18 }}>
+          {dateError ? <Text style={styles.fieldError}>{dateError}</Text> : null}
+        </View>
         <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
           <Text>{formatToDDMMYYYY(currentDateTime)}</Text>
         </TouchableOpacity>
@@ -165,7 +184,7 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
         ) : null}
 
         <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={handleAddDay}>
-          <Text style={styles.buttonText}>Add Day</Text>
+          <Text style={styles.buttonText}>Add Another Day</Text>
         </TouchableOpacity>
 
         {batchDays.length > 0 ? (
@@ -192,7 +211,9 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
           onPress={handleSubmitAll}
           disabled={submitting}
         >
-          <Text style={styles.buttonText}>{submitting ? 'Creating...' : 'Create All'}</Text>
+          <Text style={styles.buttonText}>
+            {submitting ? 'Creating...' : batchDays.length > 0 ? 'Create All' : 'Create Shoot Day'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={onBack}>

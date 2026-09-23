@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { View } from 'react-native';
 import { Screen, Role, Invite, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary } from './src/types';
 import { API_URL } from './src/api';
 import { launchImageLibrary } from 'react-native-image-picker';
@@ -18,6 +19,7 @@ import { getAuth, signInWithCustomToken, signOut } from '@react-native-firebase/
 import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from './src/constants';
 import InviteListScreen from './src/screens/InviteListScreen';
 import BulkCreateShootDaysScreen from './src/screens/BulkCreateShootDaysScreen';
+import HeaderMenu from './src/components/HeaderMenu';
 
 function App(): React.JSX.Element {
   const [screen, setScreen] = useState<Screen>('login');
@@ -33,6 +35,7 @@ function App(): React.JSX.Element {
   const [callRequestStatusReturnTo, setCallRequestStatusReturnTo] = useState<Screen>('home');
   const [inviteListStatus, setInviteListStatus] = useState<'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED'>('PENDING');
   const [extraProfileReturnTo, setExtraProfileReturnTo] = useState<Screen>('extrasList');
+  const [shootDayDetailReturnTo, setShootDayDetailReturnTo] = useState<Screen>('shootDaysList');
 
   const handleViewInvites = (status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED') => {
     setInviteListStatus(status);
@@ -95,6 +98,7 @@ function App(): React.JSX.Element {
   const [selectedShootDay, setSelectedShootDay] = useState<ShootDayDetail | null>(null);
   const [shootDayDetailLoading, setShootDayDetailLoading] = useState(false);
   const [shootDayDetailMessage, setShootDayDetailMessage] = useState('');
+  const [shootDayDateError, setShootDayDateError] = useState('');
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [editDateTime, setEditDateTime] = useState<Date | null>(null);
   const [editingCallRequestId, setEditingCallRequestId] = useState<string | null>(null);
@@ -483,7 +487,8 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     }
   };
 
-  const handleSelectShootDay = (id: string) => {
+  const handleSelectShootDay = (id: string, returnTo: Screen = 'shootDaysList') => {
+    setShootDayDetailReturnTo(returnTo);
     setScreen('shootDayDetail');
     loadShootDayDetail(id);
   };
@@ -491,17 +496,20 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
   const handleStartEditDate = () => {
     if (!selectedShootDay) return;
     setEditDateTime(new Date(selectedShootDay.date));
+    setShootDayDateError('');
     setIsEditingDate(true);
   };
 
   const handleCancelEditDate = () => {
     setIsEditingDate(false);
     setEditDateTime(null);
+    setShootDayDateError('');
   };
 
   const handleSaveDate = async () => {
     if (!editDateTime || !selectedShootDay) return;
     setShootDayDetailMessage('');
+    setShootDayDateError('');
     try {
       const response = await fetch(`${API_URL}/shoot-days/${selectedShootDay.id}`, {
         method: 'PATCH',
@@ -515,7 +523,7 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
       const data = await response.json();
 
       if (!response.ok) {
-        setShootDayDetailMessage(`Could not update date/time: ${data.error}`);
+        setShootDayDateError(data.error);
         return;
       }
 
@@ -630,83 +638,93 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
     if (screen === 'shootDaysList') {
       loadShootDays();
     }
-  }, [screen, skillFilter, genderFilter, availabilityFilter]);
+    if (screen === 'home') {
+      if (role === 'ADMIN') {
+        loadShootDays();
+      } else {
+        loadInvites();
+      }
+    }
+  }, [screen, skillFilter, genderFilter, availabilityFilter, role]);
 
-  if (screen === 'login') {
-    return (
-      <LoginScreen
-        email={email}
-        setEmail={setEmail}
-        password={password}
-        setPassword={setPassword}
-        message={message}
-        onLogin={handleLogin}
-      />
-    );
-  }
+  const renderScreen = (): React.JSX.Element => {
+    if (screen === 'login') {
+      return (
+        <LoginScreen
+          email={email}
+          setEmail={setEmail}
+          password={password}
+          setPassword={setPassword}
+          message={message}
+          onLogin={handleLogin}
+        />
+      );
+    }
 
-  if (screen === 'home') {
-    return (
-      <HomeScreen
-        userName={userName}
-        role={role}
-        token={token}
-        onNavigate={(target) => setScreen(target)}
-        onLogout={handleLogout}
-      />
-    );
-  }
+    if (screen === 'home') {
+      return (
+        <HomeScreen
+          userName={userName}
+          role={role}
+          token={token}
+          shootDays={shootDays}
+          invites={invites}
+          onNavigate={(target) => setScreen(target)}
+          onSelectShootDay={(id) => handleSelectShootDay(id, 'home')}
+        />
+      );
+    }
 
     if (screen === 'profile') {
-    return (
-      <ProfileScreen
-        name={userName}
-        age={age}
-        setAge={setAge}
-        gender={gender}
-        setGender={setGender}
-        heightCm={heightCm}
-        setHeightCm={setHeightCm}
-        skills={skills}
-        onToggleSkill={toggleSkill}
-        otherSkills={otherSkills}
-        setOtherSkills={setOtherSkills}
-        languages={languages}
-        onToggleLanguage={toggleLanguage}
-        otherLanguages={otherLanguages}
-        setOtherLanguages={setOtherLanguages}
-        phoneNumber={phoneNumber}
-        setPhoneNumber={setPhoneNumber}
-        contactEmail={contactEmail}
-        setContactEmail={setContactEmail}
-        contactError={contactError}
-        availability={availability}
-        onToggleAvailability={toggleAvailability}
-        otherAvailability={otherAvailability}
-        setOtherAvailability={setOtherAvailability}
-        loading={profileLoading}
-        message={profileMessage}
-        onSave={saveProfile}
-        onBack={() => {
-          setIsEditingProfile(false);
-          setScreen('home');
-        }}
-        isEditingProfile={isEditingProfile}
-        setIsEditingProfile={setIsEditingProfile}
-        onCancelEdit={handleCancelEdit}
-        facePhotoUrl={facePhotoUrl}
-        fullBodyPhotoUrl={fullBodyPhotoUrl}
-        pendingFacePhoto={pendingFacePhoto}
-        pendingFullBodyPhoto={pendingFullBodyPhoto}
-        onPickFacePhoto={handlePickFacePhoto}
-        onPickFullBodyPhoto={handlePickFullBodyPhoto}
-        uploadingPhoto={uploadingPhoto}
-        showSavedPopup={showSavedPopup}
-      />
-    );
-  }
+      return (
+        <ProfileScreen
+          name={userName}
+          age={age}
+          setAge={setAge}
+          gender={gender}
+          setGender={setGender}
+          heightCm={heightCm}
+          setHeightCm={setHeightCm}
+          skills={skills}
+          onToggleSkill={toggleSkill}
+          otherSkills={otherSkills}
+          setOtherSkills={setOtherSkills}
+          languages={languages}
+          onToggleLanguage={toggleLanguage}
+          otherLanguages={otherLanguages}
+          setOtherLanguages={setOtherLanguages}
+          phoneNumber={phoneNumber}
+          setPhoneNumber={setPhoneNumber}
+          contactEmail={contactEmail}
+          setContactEmail={setContactEmail}
+          contactError={contactError}
+          availability={availability}
+          onToggleAvailability={toggleAvailability}
+          otherAvailability={otherAvailability}
+          setOtherAvailability={setOtherAvailability}
+          loading={profileLoading}
+          message={profileMessage}
+          onSave={saveProfile}
+          onBack={() => {
+            setIsEditingProfile(false);
+            setScreen('home');
+          }}
+          isEditingProfile={isEditingProfile}
+          setIsEditingProfile={setIsEditingProfile}
+          onCancelEdit={handleCancelEdit}
+          facePhotoUrl={facePhotoUrl}
+          fullBodyPhotoUrl={fullBodyPhotoUrl}
+          pendingFacePhoto={pendingFacePhoto}
+          pendingFullBodyPhoto={pendingFullBodyPhoto}
+          onPickFacePhoto={handlePickFacePhoto}
+          onPickFullBodyPhoto={handlePickFullBodyPhoto}
+          uploadingPhoto={uploadingPhoto}
+          showSavedPopup={showSavedPopup}
+        />
+      );
+    }
 
-  if (screen === 'invites') {
+    if (screen === 'invites') {
       return (
         <InvitesScreen
           invites={invites}
@@ -719,131 +737,154 @@ if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
       );
     }
 
-  if (screen === 'extrasList') {
-    return (
-      <ExtrasListScreen
-        extras={extras}
-        loading={extrasLoading}
-        message={extrasMessage}
-        skillFilter={skillFilter}
-        onSelectSkillFilter={toggleSkillFilter}
-        onClearSkillFilter={() => setSkillFilter([])}
-        genderFilter={genderFilter}
-        onSelectGenderFilter={setGenderFilter}
-        availabilityFilter={availabilityFilter}
-        onSelectAvailabilityFilter={toggleAvailabilityFilter}
-        onClearAvailabilityFilter={() => setAvailabilityFilter([])}
-        minAgeFilter={minAgeFilter}
-        setMinAgeFilter={setMinAgeFilter}
-        maxAgeFilter={maxAgeFilter}
-        setMaxAgeFilter={setMaxAgeFilter}
-        onApplyAgeFilter={loadExtras}
-        onSelectExtra={handleSelectExtra}
-        onClearFilters={handleClearFilters}
-        onBack={() => setScreen('home')}
-      />
-    );
-  }
+    if (screen === 'extrasList') {
+      return (
+        <ExtrasListScreen
+          extras={extras}
+          loading={extrasLoading}
+          message={extrasMessage}
+          skillFilter={skillFilter}
+          onSelectSkillFilter={toggleSkillFilter}
+          onClearSkillFilter={() => setSkillFilter([])}
+          genderFilter={genderFilter}
+          onSelectGenderFilter={setGenderFilter}
+          availabilityFilter={availabilityFilter}
+          onSelectAvailabilityFilter={toggleAvailabilityFilter}
+          onClearAvailabilityFilter={() => setAvailabilityFilter([])}
+          minAgeFilter={minAgeFilter}
+          setMinAgeFilter={setMinAgeFilter}
+          maxAgeFilter={maxAgeFilter}
+          setMaxAgeFilter={setMaxAgeFilter}
+          onApplyAgeFilter={loadExtras}
+          onSelectExtra={handleSelectExtra}
+          onClearFilters={handleClearFilters}
+          onBack={() => setScreen('home')}
+        />
+      );
+    }
 
-  if (screen === 'extraProfileDetail') {
-    return (
-      <ExtraProfileDetailScreen
-        profile={selectedExtraProfile}
-        loading={extraDetailLoading}
-        message={extraDetailMessage}
-        onBack={() => setScreen(extraProfileReturnTo)}
-        tally={extraTally}
-      />
-    );
-  }
+    if (screen === 'extraProfileDetail') {
+      return (
+        <ExtraProfileDetailScreen
+          profile={selectedExtraProfile}
+          loading={extraDetailLoading}
+          message={extraDetailMessage}
+          onBack={() => setScreen(extraProfileReturnTo)}
+          tally={extraTally}
+        />
+      );
+    }
 
-  if (screen === 'shootDaysList') {
-    return (
-      <ShootDaysListScreen
-        shootDays={shootDays}
-        loading={shootDaysLoading}
-        message={shootDaysMessage}
-        onSelectShootDay={handleSelectShootDay}
-        onBack={() => setScreen('home')}
-      />
-    );
-  }
+    if (screen === 'shootDaysList') {
+      return (
+        <ShootDaysListScreen
+          shootDays={shootDays}
+          loading={shootDaysLoading}
+          message={shootDaysMessage}
+          onSelectShootDay={handleSelectShootDay}
+          onBack={() => setScreen('home')}
+        />
+      );
+    }
 
-  if (screen === 'shootDayDetail') {
-    return (
-      <ShootDayDetailScreen
-        shootDay={selectedShootDay}
-        loading={shootDayDetailLoading}
-        message={shootDayDetailMessage}
-        onBack={() => setScreen('shootDaysList')}
-        isEditingDate={isEditingDate}
-        onStartEditDate={handleStartEditDate}
-        onCancelEditDate={handleCancelEditDate}
-        editDateTime={editDateTime}
-        onDateTimeChange={setEditDateTime}
-        onSaveDate={handleSaveDate}
-        editingCallRequestId={editingCallRequestId}
-        editDescription={editDescription}
-        setEditDescription={setEditDescription}
-        editQuantity={editQuantity}
-        setEditQuantity={setEditQuantity}
-        onStartEditCallRequest={handleStartEditCallRequest}
-        onCancelEditCallRequest={handleCancelEditCallRequest}
-        onSaveCallRequest={handleSaveCallRequest}
-        onViewResponses={handleViewResponses}
-      />
-    );
-  }
+    if (screen === 'shootDayDetail') {
+      return (
+        <ShootDayDetailScreen
+          shootDay={selectedShootDay}
+          loading={shootDayDetailLoading}
+          message={shootDayDetailMessage}
+          onBack={() => setScreen(shootDayDetailReturnTo)}
+          isEditingDate={isEditingDate}
+          onStartEditDate={handleStartEditDate}
+          onCancelEditDate={handleCancelEditDate}
+          editDateTime={editDateTime}
+          onDateTimeChange={setEditDateTime}
+          onSaveDate={handleSaveDate}
+          dateError={shootDayDateError}
+          editingCallRequestId={editingCallRequestId}
+          editDescription={editDescription}
+          setEditDescription={setEditDescription}
+          editQuantity={editQuantity}
+          setEditQuantity={setEditQuantity}
+          onStartEditCallRequest={handleStartEditCallRequest}
+          onCancelEditCallRequest={handleCancelEditCallRequest}
+          onSaveCallRequest={handleSaveCallRequest}
+          onViewResponses={handleViewResponses}
+        />
+      );
+    }
 
-  if (screen === 'createShootDay') {
-    return <CreateShootDayScreen token={token} onBack={() => setScreen('home')} />;
-  }
+    if (screen === 'createShootDay') {
+      return <CreateShootDayScreen token={token} onBack={() => setScreen('home')} />;
+    }
 
-  if (screen === 'createCallRequest') {
-    return (
-      <CreateCallRequestScreen
-        token={token}
-        onBack={() => setScreen('home')}
-                onCreated={(callRequestId) => {
-          setActiveCallRequestId(callRequestId);
-          setCallRequestStatusReturnTo('home');
-          setScreen('callRequestStatus');
-        }}
-      />
-    );
-  }
+    if (screen === 'createCallRequest') {
+      return (
+        <CreateCallRequestScreen
+          token={token}
+          onBack={() => setScreen('home')}
+          onCreated={(callRequestId) => {
+            setActiveCallRequestId(callRequestId);
+            setCallRequestStatusReturnTo('home');
+            setScreen('callRequestStatus');
+          }}
+        />
+      );
+    }
 
-  if (screen === 'callRequestStatus') {
-    return (
-      <CallRequestStatusScreen
-        token={token}
-        callRequestId={activeCallRequestId}
-        onBack={() => setScreen(callRequestStatusReturnTo)}
-        onViewInvites={handleViewInvites}
-      />
-    );
-  }
+    if (screen === 'callRequestStatus') {
+      return (
+        <CallRequestStatusScreen
+          token={token}
+          callRequestId={activeCallRequestId}
+          onBack={() => setScreen(callRequestStatusReturnTo)}
+          onViewInvites={handleViewInvites}
+        />
+      );
+    }
 
     if (screen === 'inviteList') {
+      return (
+        <InviteListScreen
+          token={token}
+          callRequestId={activeCallRequestId}
+          status={inviteListStatus}
+          onBack={() => setScreen('callRequestStatus')}
+          onSelectExtra={(id) => handleSelectExtra(id, 'inviteList')}
+        />
+      );
+    }
+
+    if (screen === 'bulkCreateShootDays') {
+      return <BulkCreateShootDaysScreen token={token} onBack={() => setScreen('home')} />;
+    }
+
+    // Fallback — shouldn't normally be reached, but keeps TypeScript happy
+    // about every possible Screen value being handled.
     return (
-      <InviteListScreen
+      <HomeScreen
+        userName={userName}
+        role={role}
         token={token}
-        callRequestId={activeCallRequestId}
-        status={inviteListStatus}
-        onBack={() => setScreen('callRequestStatus')}
-        onSelectExtra={(id) => handleSelectExtra(id, 'inviteList')}
+        shootDays={shootDays}
+        invites={invites}
+        onNavigate={(target) => setScreen(target)}
+        onSelectShootDay={(id) => handleSelectShootDay(id, 'home')}
       />
     );
-  }
+  };
 
-  if (screen === 'bulkCreateShootDays') {
-    return <BulkCreateShootDaysScreen token={token} onBack={() => setScreen('home')} />;
-  }
-
-  // Fallback — shouldn't normally be reached, but keeps TypeScript happy
-  // about every possible Screen value being handled.
   return (
-    <HomeScreen userName={userName} role={role} token={token} onNavigate={(target) => setScreen(target)} onLogout={handleLogout} />
+    <View style={{ flex: 1 }}>
+      {renderScreen()}
+      {screen !== 'login' && (
+        <HeaderMenu
+          isHome={screen === 'home'}
+          onGoHome={() => setScreen('home')}
+          onLogout={handleLogout}
+        />
+      )}
+    </View>
   );
 }
 
