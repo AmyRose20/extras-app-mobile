@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity } from 'react-native';
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
-import { styles, colors } from '../styles';
+import LinearGradient from 'react-native-linear-gradient';
 import { Role, ShootDaySummary, Invite } from '../types';
 import { formatToCalendarKey } from '../dateUtils';
 import { getApp } from '@react-native-firebase/app';
@@ -101,64 +101,129 @@ function HomeScreen({ userName, role, token, shootDays, invites, onNavigate, onS
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Welcome, {userName}</Text>
+    <LinearGradient
+      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
+      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
+      start={{ x: 0.15, y: 0 }}
+      end={{ x: 0.85, y: 1 }}
+      style={homeStyles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={homeStyles.scrollContent}>
+          <Text style={homeStyles.title}>Welcome, {userName}</Text>
 
-        <Calendar
-          markedDates={markedDates}
-          onDayPress={handleDayPress}
-          theme={{
-            todayTextColor: colors.primary,
-            arrowColor: colors.primary,
-            dotColor: colors.primary,
-            selectedDayBackgroundColor: colors.primary,
-          }}
-        />
+          <View style={homeStyles.calendarCard}>
+            <Calendar
+              markedDates={markedDates}
+              onDayPress={handleDayPress}
+              theme={{
+                calendarBackground: 'transparent',
+                textSectionTitleColor: 'rgba(255,255,255,0.72)',
+                dayTextColor: '#fff',
+                textDisabledColor: 'rgba(255,255,255,0.25)',
+                monthTextColor: '#fff',
+                todayTextColor: '#d99c4a',
+                arrowColor: '#d99c4a',
+                selectedDayBackgroundColor: '#d99c4a',
+                selectedDayTextColor: '#1a1330',
+                dotColor: '#d99c4a',
+                selectedDotColor: '#1a1330',
+              }}
+            />
+          </View>
 
-        {/* Extras see profile/invites options; admins see coordinator options.
-            This is what makes Amy2 and extra2 see different Home screens. */}
-        {role === 'EXTRA' ? (
-          <>
-            <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('profile')}>
-              <Text style={styles.buttonText}>My Profile</Text>
-            </TouchableOpacity>
+          {/* Extras see profile/invites options; admins see coordinator options.
+              This is what makes Amy2 and extra2 see different Home screens. */}
+          {role === 'EXTRA' ? (
+            <>
+              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('profile')}>
+                <Text style={homeStyles.buttonText}>My Profile</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('invites')}>
-              <Text style={styles.buttonText}>My Invites</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <Text style={styles.sectionHeading}>Schedule</Text>
+              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('invites')}>
+                <Text style={homeStyles.buttonText}>My Invites</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={homeStyles.sectionHeading}>Schedule</Text>
 
-            <TouchableOpacity style={styles.button} onPress={() => onNavigate('bulkCreateShootDays')}>
-              <Text style={styles.buttonText}>Add Shoot Days</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('bulkCreateShootDays')}>
+                <Text style={homeStyles.buttonText}>Add Shoot Days</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('shootDaysList')}>
-              <Text style={styles.buttonText}>Shoot Days</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('shootDaysList')}>
+                <Text style={homeStyles.buttonText}>Shoot Days</Text>
+              </TouchableOpacity>
 
-            <Text style={styles.sectionHeading}>Casting</Text>
+              <Text style={homeStyles.sectionHeading}>Casting</Text>
 
-            <TouchableOpacity style={styles.button} onPress={() => onNavigate('createCallRequest')}>
-              <Text style={styles.buttonText}>Create Call Request</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('createCallRequest')}>
+                <Text style={homeStyles.buttonText}>Create Call Request</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('extrasList')}>
-              <Text style={styles.buttonText}>View Extra Profiles</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('extrasList')}>
+                <Text style={homeStyles.buttonText}>View Extra Profiles</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={() => onNavigate('deletionRequests')}>
-              <Text style={styles.buttonText}>Deletion Requests</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('deletionRequests')}>
+                <Text style={homeStyles.buttonText}>Deletion Requests</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
+
+const homeStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+    marginBottom: 16,
+  },
+  calendarCard: {
+    backgroundColor: 'rgba(12,10,22,0.55)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    padding: 8,
+    marginBottom: 20,
+    overflow: 'hidden',
+  },
+  sectionHeading: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    color: 'rgba(255,255,255,0.72)',
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  button: {
+    backgroundColor: '#d99c4a',
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  buttonText: {
+    color: '#1a1330',
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: 0.3,
+  },
+});
 
 export default HomeScreen;
 

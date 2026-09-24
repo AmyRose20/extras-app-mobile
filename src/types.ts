@@ -14,7 +14,7 @@ export type Screen =
   | 'shootDayDetail'
   | 'inviteList'
   | 'bulkCreateShootDays'
-  | 'calendar';
+  | 'calendar'
   | 'deletionRequests';
 
 export type Role = 'ADMIN' | 'EXTRA';

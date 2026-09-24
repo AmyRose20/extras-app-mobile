@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity } from 'react-native';
-import { styles } from '../styles';
+import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { API_URL } from '../api';
 
 type Props = {
@@ -69,76 +69,151 @@ function CreateCallRequestScreen({ token, onBack, onCreated }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <Text style={styles.title}>Create Call Request</Text>
+    <LinearGradient
+      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
+      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
+      start={{ x: 0.15, y: 0 }}
+      end={{ x: 0.85, y: 1 }}
+      style={createCallStyles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={createCallStyles.scrollContent}>
+          <Text style={createCallStyles.title}>Create Call Request</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Shoot Day ID"
-          value={shootDayId}
-          onChangeText={setShootDayId}
-          autoCapitalize="none"
-        />
+          <TextInput
+            style={createCallStyles.input}
+            placeholder="Shoot Day ID"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            value={shootDayId}
+            onChangeText={setShootDayId}
+            autoCapitalize="none"
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Description (e.g. 20 men, fight scene)"
-          value={description}
-          onChangeText={setDescription}
-        />
+          <TextInput
+            style={createCallStyles.input}
+            placeholder="Description (e.g. 20 men, fight scene)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            value={description}
+            onChangeText={setDescription}
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Quantity needed"
-          value={quantityNeeded}
-          onChangeText={setQuantityNeeded}
-          keyboardType="numeric"
-        />
+          <TextInput
+            style={createCallStyles.input}
+            placeholder="Quantity needed"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            value={quantityNeeded}
+            onChangeText={setQuantityNeeded}
+            keyboardType="numeric"
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Min age (optional)"
-          value={minAge}
-          onChangeText={setMinAge}
-          keyboardType="numeric"
-        />
+          <TextInput
+            style={createCallStyles.input}
+            placeholder="Min age (optional)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            value={minAge}
+            onChangeText={setMinAge}
+            keyboardType="numeric"
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Max age (optional)"
-          value={maxAge}
-          onChangeText={setMaxAge}
-          keyboardType="numeric"
-        />
+          <TextInput
+            style={createCallStyles.input}
+            placeholder="Max age (optional)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            value={maxAge}
+            onChangeText={setMaxAge}
+            keyboardType="numeric"
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Gender (optional, e.g. MALE)"
-          value={gender}
-          onChangeText={setGender}
-          autoCapitalize="characters"
-        />
+          <TextInput
+            style={createCallStyles.input}
+            placeholder="Gender (optional, e.g. MALE)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            value={gender}
+            onChangeText={setGender}
+            autoCapitalize="characters"
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Skills (optional, comma-separated)"
-          value={skills}
-          onChangeText={setSkills}
-        />
+          <TextInput
+            style={createCallStyles.input}
+            placeholder="Skills (optional, comma-separated)"
+            placeholderTextColor="rgba(255,255,255,0.5)"
+            value={skills}
+            onChangeText={setSkills}
+          />
 
-        <TouchableOpacity style={styles.button} onPress={handleCreate}>
-          <Text style={styles.buttonText}>Create</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={createCallStyles.button} onPress={handleCreate}>
+            <Text style={createCallStyles.buttonText}>Create</Text>
+          </TouchableOpacity>
 
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+          {message ? <Text style={createCallStyles.message}>{message}</Text> : null}
 
-        <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={onBack}>
-          <Text style={styles.buttonText}>Back</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+          <TouchableOpacity style={createCallStyles.buttonGhost} onPress={onBack}>
+            <Text style={createCallStyles.buttonGhostText}>Back</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
+
+const createCallStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+    marginBottom: 16,
+  },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#fff',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  message: {
+    fontSize: 14,
+    color: '#fff',
+    marginBottom: 12,
+  },
+  button: {
+    backgroundColor: '#d99c4a',
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  buttonText: {
+    color: '#1a1330',
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: 0.3,
+  },
+  buttonGhost: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  buttonGhostText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+});
 
 export default CreateCallRequestScreen;

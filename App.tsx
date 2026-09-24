@@ -8,7 +8,6 @@ import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import InvitesScreen from './src/screens/InvitesScreen';
-import CreateShootDayScreen from './src/screens/CreateShootDayScreen';
 import CreateCallRequestScreen from './src/screens/CreateCallRequestScreen';
 import CallRequestStatusScreen from './src/screens/CallRequestStatusScreen';
 import ExtrasListScreen from './src/screens/ExtrasListScreen';
@@ -977,10 +976,6 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           onViewResponses={handleViewResponses}
         />
       );
-    }
-
-    if (screen === 'createShootDay') {
-      return <CreateShootDayScreen token={token} onBack={() => setScreen('home')} />;
     }
 
     if (screen === 'createCallRequest') {
