@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View } from 'react-native';
-import { Screen, Role, Invite, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary, DeletionRequestSummary } from './src/types';
+import { Screen, Role, Invite, Production, DialogConfig, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary, DeletionRequestSummary } from './src/types';
 import { API_URL } from './src/api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { getStorage, ref, putFile, getDownloadURL } from '@react-native-firebase/storage';
@@ -18,16 +17,23 @@ import { getAuth, signInWithCustomToken, signOut } from '@react-native-firebase/
 import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from './src/constants';
 import InviteListScreen from './src/screens/InviteListScreen';
 import BulkCreateShootDaysScreen from './src/screens/BulkCreateShootDaysScreen';
-import HeaderMenu from './src/components/HeaderMenu';
+import HeaderMenu, { MenuItem } from './src/components/HeaderMenu';
+import ConfirmDialog from './src/components/ConfirmDialog';
 import DeletionRequestsScreen from './src/screens/DeletionRequestsScreen';
+import { SafeAreaView, Text, View, StyleSheet, StatusBar } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-function App(): React.JSX.Element {
+
+function AppContent(): React.JSX.Element {
+  const insets = useSafeAreaInsets(); // how much space the status bar etc. take up
   const [screen, setScreen] = useState<Screen>('login');
+  const [dialog, setDialog] = useState<DialogConfig | null>(null); // null = no dialog open
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [token, setToken] = useState('');
   const [userName, setUserName] = useState('');
+  const [coordinatorProduction, setCoordinatorProduction] = useState<string | null>(null);
   const [role, setRole] = useState<Role>('EXTRA');
   const [userId, setUserId] = useState('');
   const [activeCallRequestId, setActiveCallRequestId] = useState('');
@@ -54,6 +60,9 @@ function App(): React.JSX.Element {
   const [gender, setGender] = useState('');
   const [deletionRequestStatus, setDeletionRequestStatus] = useState('NONE');
   const [deletionActionLoading, setDeletionActionLoading] = useState(false);
+  const [allProductions, setAllProductions] = useState<Production[]>([]); // every production, for the chips
+  const [myProductionNames, setMyProductionNames] = useState<string[]>([]); // the ones this extra is on
+  const [productionsError, setProductionsError] = useState('');
   const [heightCm, setHeightCm] = useState('');
   const [skills, setSkills] = useState<string[]>([]);
   const [otherSkills, setOtherSkills] = useState('');
@@ -133,6 +142,7 @@ function App(): React.JSX.Element {
       setUserId(data.user.id);
       setUserName(data.user.name);
       setRole(data.user.role);
+      setCoordinatorProduction(data.user.production?.name ?? null);
       setScreen('home');
     } catch (error) {
       setMessage('Something went wrong — is the backend running?');
@@ -148,6 +158,7 @@ function App(): React.JSX.Element {
     setPassword('');
     setMessage('');
     setScreen('login');
+    setCoordinatorProduction(null);
   };
 
   const pickImage = async (onPicked: (uri: string) => void) => {
@@ -205,11 +216,30 @@ function App(): React.JSX.Element {
       setPendingFacePhoto(null);
       setPendingFullBodyPhoto(null);
       setDeletionRequestStatus(data.deletionRequestStatus ?? 'NONE');
+      setMyProductionNames((data.productions ?? []).map((p: Production) => p.name));
+      setProductionsError('');
+
+      // Full list of productions, used for the chips in edit mode
+      const prodResponse = await fetch(`${API_URL}/productions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (prodResponse.ok) {
+        setAllProductions(await prodResponse.json());
+      } else {
+        setProductionsError('Could not load productions.');
+      }
     } catch (error) {
       setProfileMessage('Something went wrong loading your profile.');
     } finally {
       setProfileLoading(false);
     }
+  };
+
+  const toggleProduction = (name: string) => {
+    setMyProductionNames((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
+    );
+    setProductionsError('');
   };
 
   const loadTally = async () => {
@@ -249,12 +279,40 @@ function App(): React.JSX.Element {
         return;
     }   
 
-if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
-  setContactError('Please enter a valid phone number (digits, spaces, dashes, and an optional leading + only).');
-  return;
-}
+  if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
+    setContactError('Please enter a valid phone number (digits, spaces, dashes, and an optional leading + only).');
+    return;
+  }
 
-    try {
+if (myProductionNames.length === 0) {
+      setProductionsError('Select at least one production.');
+      return;
+    }
+    setProductionsError('');
+
+        try {
+      // 1) Save productions first. If this is refused (e.g. booked on an
+      //    upcoming shoot), stop here so nothing else is half-saved.
+      const selectedProductionIds = allProductions
+        .filter((p) => myProductionNames.includes(p.name))
+        .map((p) => p.id);
+
+      const prodResponse = await fetch(`${API_URL}/profiles/me/productions`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ productionIds: selectedProductionIds }),
+      });
+
+      if (!prodResponse.ok) {
+        const prodData = await prodResponse.json();
+        setProductionsError(prodData.error);
+        return;
+      }
+
+      // 2) Then photos + the rest of the profile, as before
       setUploadingPhoto(true);
 
       let newFacePhotoUrl = facePhotoUrl;
@@ -555,6 +613,27 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     setExtraDetailMessage('Something went wrong requesting deletion.');
   }
 };
+
+  const removeExtraFromMyProduction = async (extraProfileId: string) => {
+    setExtraDetailMessage('');
+    try {
+      const response = await fetch(`${API_URL}/profiles/${extraProfileId}/production`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        // e.g. "This is the extra's only production. Use a deletion request instead."
+        setExtraDetailMessage(data.error);
+        return;
+      }
+// e.g. "Removed from Wednesday season 3"
+      setScreen(extraProfileReturnTo);
+    } catch (error) {
+      setExtraDetailMessage('Something went wrong removing this extra.');
+    }
+  };
 
   const loadExtraTally = async (extraProfileId: string) => {
     setExtraTally(null);
@@ -866,6 +945,10 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           uploadingPhoto={uploadingPhoto}
           showSavedPopup={showSavedPopup}
           deletionRequestStatus={deletionRequestStatus}
+          allProductionNames={allProductions.map((p) => p.name)}
+          myProductionNames={myProductionNames}
+          onToggleProduction={toggleProduction}
+          productionsError={productionsError}
         />
       );
     }
@@ -879,6 +962,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           onRespond={respondToInvite}
           onBack={() => setScreen('home')}
           tally={tally}
+          showDialog={setDialog}
         />
       );
     }
@@ -917,11 +1001,6 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           message={extraDetailMessage}
           onBack={() => setScreen(extraProfileReturnTo)}
           tally={extraTally}
-          onRequestDeletion={() => {
-            if (selectedExtraProfile) {
-              adminRequestDeletionForExtra(selectedExtraProfile.userId);
-            }
-          }}
         />
       );
     }
@@ -935,6 +1014,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           onApprove={approveDeletionRequest}
           onDeny={denyDeletionRequest}
           onBack={() => setScreen('home')}
+          showDialog={setDialog}
         />
       );
     }
@@ -1016,7 +1096,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     }
 
     if (screen === 'bulkCreateShootDays') {
-      return <BulkCreateShootDaysScreen token={token} onBack={() => setScreen('home')} />;
+      return <BulkCreateShootDaysScreen token={token} productionName={coordinatorProduction} onBack={() => setScreen('home')} />;
     }
 
     // Fallback — shouldn't normally be reached, but keeps TypeScript happy
@@ -1034,22 +1114,132 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     );
   };
 
-  return (
-    <View style={{ flex: 1 }}>
-      {renderScreen()}
-      {screen !== 'login' && (
-        <HeaderMenu
-          isHome={screen === 'home'}
-          onGoHome={() => setScreen('home')}
-          onLogout={handleLogout}
-          showDeleteAccount={role === 'EXTRA'}
-          deletionRequestStatus={deletionRequestStatus}
-          onRequestDeletion={requestAccountDeletion}
-          onCancelDeletion={cancelAccountDeletion}
-          deletionActionLoading={deletionActionLoading}
+    // ----- Hamburger menu items for the current screen -----
+  const menuItems: MenuItem[] = [];
+
+  // Extras: request (or cancel) deletion of their own account
+  if (role === 'EXTRA') {
+    const pending = deletionRequestStatus === 'PENDING';
+    menuItems.push({
+      label: pending ? 'Cancel Deletion Request' : 'Delete My Account',
+      danger: true,
+      disabled: deletionActionLoading,
+      onPress: () =>
+        setDialog(
+          pending
+            ? {
+                title: 'Cancel Deletion Request?',
+                message: 'Your account will no longer be scheduled for deletion.',
+                cancelText: 'No',
+                confirmText: 'Yes, Cancel It',
+                onConfirm: cancelAccountDeletion,
+              }
+            : {
+                title: 'Delete Account?',
+                message:
+                  'This sends a request to the admin to delete your account. You will not be able to log in once it is approved.',
+                confirmText: 'Request Deletion',
+                destructive: true,
+                onConfirm: requestAccountDeletion,
+              }
+        ),
+    });
+  }
+
+  // Coordinators viewing an extra's profile: remove from production / request deletion
+  if (screen === 'extraProfileDetail' && selectedExtraProfile) {
+    const extra = selectedExtraProfile;
+    const deletionPending = extra.deletionRequestStatus === 'PENDING';
+
+    const openDeletionDialog = () =>
+      setDialog({
+        title: 'Request Account Deletion?',
+        message: `This sends a deletion request for ${extra.name}'s account to be reviewed.`,
+        confirmText: 'Request Deletion',
+        destructive: true,
+        onConfirm: () => adminRequestDeletionForExtra(extra.userId),
+      });
+
+    menuItems.push({
+      label: 'Remove from Production',
+      danger: true,
+      onPress: () => {
+        if ((extra.productions?.length ?? 0) <= 1) {
+          // Only production: explain, and offer the deletion route instead
+          setDialog({
+            title: `Can't remove ${extra.name}`,
+            message: deletionPending
+              ? `${coordinatorProduction} is ${extra.name}'s only production, and an account deletion request is already awaiting approval.`
+              : `${coordinatorProduction} is ${extra.name}'s only production. To take them off completely, request account deletion instead.`,
+            cancelText: 'Close',
+            ...(deletionPending
+              ? {}
+              : { confirmText: 'Request Deletion', destructive: true, onConfirm: openDeletionDialog }),
+          });
+        } else {
+          setDialog({
+            title: `Remove from ${coordinatorProduction}?`,
+            message: `${extra.name} will no longer be matched or invited for ${coordinatorProduction}. Their upcoming invites for this production will be expired. Their account and any other productions are not affected.`,
+            confirmText: 'Remove',
+            destructive: true,
+            onConfirm: () => removeExtraFromMyProduction(extra.id),
+          });
+        }
+      },
+    });
+
+    menuItems.push({
+      label: deletionPending ? 'Deletion Requested' : 'Request Account Deletion',
+      danger: !deletionPending,
+      disabled: deletionPending, // greyed out once a request is pending
+      onPress: openDeletionDialog,
+    });
+  }
+
+      return (
+    <View style={{ flex: 1, backgroundColor: '#1a1330', paddingTop: screen === 'login' ? 0 : insets.top }}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <View style={{ flex: 1 }}>
+        {renderScreen()}
+
+        {screen !== 'login' && (
+          <HeaderMenu
+            isHome={screen === 'home'}
+            onGoHome={() => setScreen('home')}
+            onLogout={handleLogout}
+            items={menuItems}
+          />
+        )}
+
+        {/* One app-wide confirmation dialog, drawn over everything */}
+        <ConfirmDialog
+          visible={dialog !== null}
+          title={dialog?.title ?? ''}
+          message={dialog?.message ?? ''}
+          confirmText={dialog?.confirmText}
+          cancelText={dialog?.cancelText}
+          destructive={dialog?.destructive}
+          onCancel={() => setDialog(null)}
+          onConfirm={
+            dialog?.onConfirm
+              ? () => {
+                  const action = dialog?.onConfirm;
+                  setDialog(null); // close this dialog first...
+                  action?.();      // ...then run the action (which may open another dialog)
+                }
+              : undefined
+          }
         />
-      )}
+      </View>
     </View>
+  );
+}
+
+function App(): React.JSX.Element {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
   );
 }
 

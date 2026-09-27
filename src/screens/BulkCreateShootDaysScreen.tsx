@@ -12,11 +12,11 @@ type BatchDay = {
 
 type Props = {
   token: string;
+  productionName: string | null; // the coordinator's production, shown read-only
   onBack: () => void;
 };
 
-function BulkCreateShootDaysScreen({ token, onBack }: Props) {
-  const [productionName, setProductionName] = useState('');
+function BulkCreateShootDaysScreen({ token, productionName, onBack }: Props) {
   const [currentLocation, setCurrentLocation] = useState('');
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -70,11 +70,6 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
     setMessage('');
     setDateError('');
 
-    if (!productionName.trim()) {
-      setMessage('Enter a production name before creating these shoot days.');
-      return;
-    }
-
     // If there's a day currently filled in that hasn't been added to the
     // batch yet, include it automatically — you shouldn't have to press
     // "Add Another Day" just to create a single shoot day.
@@ -97,7 +92,6 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          productionName: productionName.trim(),
           shootDays: daysToCreate.map((day) => ({
             date: day.date.toISOString(),
             location: day.location,
@@ -116,7 +110,6 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
       setShowCreatedPopup(true);
       setTimeout(() => setShowCreatedPopup(false), 3000);
       setBatchDays([]);
-      setProductionName('');
       setCurrentLocation('');
       setCurrentDateTime(new Date());
     } catch (error) {
@@ -146,14 +139,10 @@ function BulkCreateShootDaysScreen({ token, onBack }: Props) {
         <ScrollView contentContainerStyle={bulkStyles.scrollContent}>
           <Text style={bulkStyles.title}>Add Shoot Days</Text>
 
-          <Text style={bulkStyles.fieldLabel}>Production Name</Text>
-          <TextInput
-            style={bulkStyles.input}
-            value={productionName}
-            onChangeText={setProductionName}
-            placeholder="e.g. Midnight Run"
-            placeholderTextColor="rgba(255,255,255,0.5)"
-          />
+        <Text style={bulkStyles.fieldLabel}>Production</Text>
+          <View style={bulkStyles.readOnlyBox}>
+            <Text style={bulkStyles.readOnlyText}>{productionName ?? '—'}</Text>
+          </View>
 
           <Text style={bulkStyles.sectionHeading}>Add a Day</Text>
 
@@ -266,7 +255,7 @@ const bulkStyles = StyleSheet.create({
     marginTop: 18,
     marginBottom: 10,
   },
-  input: {
+    input: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
@@ -276,6 +265,20 @@ const bulkStyles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     marginBottom: 12,
+  },
+  readOnlyBox: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  readOnlyText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    fontWeight: '600',
   },
   dateTimeText: {
     color: '#fff',

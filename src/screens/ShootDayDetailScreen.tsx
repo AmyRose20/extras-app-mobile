@@ -92,7 +92,7 @@ function ShootDayDetailScreen({
           {!loading && shootDay ? (
             <>
               <View style={detailStyles.card}>
-                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Production: </Text>{shootDay.productionName}</Text>
+                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Production: </Text>{shootDay.production.name}</Text>
                 <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Location: </Text>{shootDay.location}</Text>
 
                 {isEditingDate ? (

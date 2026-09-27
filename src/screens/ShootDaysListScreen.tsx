@@ -33,7 +33,7 @@ function ShootDaysListScreen({ shootDays, loading, message, onSelectShootDay, on
 
           {shootDays.map((day) => (
             <TouchableOpacity key={day.id} style={shootDaysStyles.card} onPress={() => onSelectShootDay(day.id)}>
-              <Text style={shootDaysStyles.cardTitle}>{day.productionName}</Text>
+              <Text style={shootDaysStyles.cardTitle}>{day.production.name}</Text>
               <Text style={shootDaysStyles.cardDetail}>{day.location}</Text>
               <Text style={shootDaysStyles.cardDetail}>
                 {formatToDDMMYYYY(day.date)} at {formatToHHMM(day.date)}

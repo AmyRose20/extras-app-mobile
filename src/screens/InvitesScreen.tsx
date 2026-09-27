@@ -1,7 +1,7 @@
 import React from 'react';
-import { Alert, SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { Invite, Tally } from '../types';
+import { DialogConfig, Invite, Tally } from '../types';
 
 type Props = {
   invites: Invite[];
@@ -10,36 +10,37 @@ type Props = {
   onRespond: (inviteId: string, status: 'ACCEPTED' | 'DECLINED' | 'CANCELLED') => void;
   onBack: () => void;
   tally: Tally | null;
+  showDialog: (config: DialogConfig) => void; // opens the app-wide confirmation dialog
 };
 
 function statusStyle(status: string, isExpired: boolean) {
-  if (isExpired) return invitesStyles.statusNegative;
+  if (isExpired || status === 'EXPIRED') return invitesStyles.statusNegative;
   if (status === 'ACCEPTED') return invitesStyles.statusAccepted;
   if (status === 'DECLINED' || status === 'CANCELLED') return invitesStyles.statusNegative;
   return invitesStyles.statusPending;
 }
 
-function InvitesScreen({ invites, loading, message, onRespond, onBack, tally }: Props) {
-  const confirmDecline = (inviteId: string) => {
-    Alert.alert(
-      'Decline this invite?',
-      'Are you sure you want to decline?',
-      [
-        { text: 'Never mind', style: 'cancel' },
-        { text: 'Yes, decline', style: 'destructive', onPress: () => onRespond(inviteId, 'DECLINED') },
-      ],
-    );
+function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, showDialog }: Props) {
+   const confirmDecline = (inviteId: string) => {
+    showDialog({
+      title: 'Decline this invite?',
+      message: 'Are you sure you want to decline?',
+      cancelText: 'Never mind',
+      confirmText: 'Yes, decline',
+      destructive: true,
+      onConfirm: () => onRespond(inviteId, 'DECLINED'),
+    });
   };
 
   const confirmCancel = (inviteId: string) => {
-    Alert.alert(
-      'Cancel this invite?',
-      'You already accepted this one. Cancelling after accepting counts toward your cancellation history.',
-      [
-        { text: 'Never mind', style: 'cancel' },
-        { text: 'Yes, cancel', style: 'destructive', onPress: () => onRespond(inviteId, 'CANCELLED') },
-      ],
-    );
+    showDialog({
+      title: 'Cancel this invite?',
+      message: 'You already accepted this one. Cancelling after accepting counts toward your cancellation history.',
+      cancelText: 'Never mind',
+      confirmText: 'Yes, cancel',
+      destructive: true,
+      onConfirm: () => onRespond(inviteId, 'CANCELLED'),
+    });
   };
 
   return (
@@ -87,7 +88,7 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally }: 
               <View key={invite.id} style={invitesStyles.card}>
                 <Text style={invitesStyles.cardTitle}>{invite.callRequest.description}</Text>
                 <Text style={invitesStyles.cardDetail}>
-                  {invite.callRequest.shootDay.productionName} — {invite.callRequest.shootDay.location}
+                  {invite.callRequest.shootDay.production.name} — {invite.callRequest.shootDay.location}
                 </Text>
                 <Text style={invitesStyles.cardDetail}>
                   {new Date(invite.callRequest.shootDay.date).toDateString()}
@@ -233,10 +234,12 @@ const invitesStyles = StyleSheet.create({
     fontSize: 13,
   },
   declineButton: {
-    backgroundColor: '#DC2626',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#ff9d9d',
   },
   declineButtonText: {
-    color: '#fff',
+    color: '#ff9d9d',
     fontWeight: '700',
     fontSize: 13,
   },

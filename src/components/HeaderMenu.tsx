@@ -1,28 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { colors, spacing } from '../styles';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { spacing } from '../styles';
+
+// One extra option in the menu (e.g. "Remove from production")
+export type MenuItem = {
+  label: string;
+  onPress: () => void;
+  danger?: boolean;   // shown in red
+  disabled?: boolean; // greyed out and not tappable
+};
 
 type Props = {
   isHome: boolean;
   onGoHome: () => void;
   onLogout: () => void;
-  showDeleteAccount: boolean;
-  deletionRequestStatus: string;
-  onRequestDeletion: () => void;
-  onCancelDeletion: () => void;
-  deletionActionLoading: boolean;
+  items?: MenuItem[]; // screen-specific options, shown between Home and Log Out
 };
 
-function HeaderMenu({
-  isHome,
-  onGoHome,
-  onLogout,
-  showDeleteAccount,
-  deletionRequestStatus,
-  onRequestDeletion,
-  onCancelDeletion,
-  deletionActionLoading,
-}: Props) {
+function HeaderMenu({ isHome, onGoHome, onLogout, items = [] }: Props) {
   const [open, setOpen] = useState(false);
 
   const handleGoHome = () => {
@@ -36,32 +31,9 @@ function HeaderMenu({
     onLogout();
   };
 
-  const handleDeleteAccountPress = () => {
-    setOpen(false);
-    if (deletionRequestStatus === 'PENDING') {
-      Alert.alert(
-        'Cancel Deletion Request?',
-        'Your account will no longer be scheduled for deletion.',
-        [
-          { text: 'No', style: 'cancel' },
-          { text: 'Yes, Cancel It', onPress: onCancelDeletion },
-        ]
-      );
-    } else {
-      Alert.alert(
-        'Delete Account?',
-        'This sends a request to the admin to delete your account. You will not be able to log in once it is approved.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Request Deletion', style: 'destructive', onPress: onRequestDeletion },
-        ]
-      );
-    }
-  };
-
   return (
     <View style={localStyles.wrapper}>
-        <TouchableOpacity style={localStyles.hamburger} onPress={() => setOpen(!open)}>
+      <TouchableOpacity style={localStyles.hamburger} onPress={() => setOpen(!open)}>
         <View style={localStyles.bar} />
         <View style={localStyles.bar} />
         <View style={localStyles.bar} />
@@ -69,34 +41,40 @@ function HeaderMenu({
 
       {open && (
         <View style={localStyles.dropdown}>
-          <TouchableOpacity
-            style={localStyles.dropdownItem}
-            onPress={handleGoHome}
-            disabled={isHome}
-          >
-            <Text style={[localStyles.dropdownText, isHome && localStyles.disabledText]}>
-              Home
-            </Text>
+          <TouchableOpacity style={localStyles.dropdownItem} onPress={handleGoHome} disabled={isHome}>
+            <Text style={[localStyles.dropdownText, isHome && localStyles.disabledText]}>Home</Text>
           </TouchableOpacity>
 
-          {showDeleteAccount && (
+          {items.length > 0 && (
             <>
               <View style={localStyles.divider} />
-              <TouchableOpacity
-                style={localStyles.dropdownItem}
-                onPress={handleDeleteAccountPress}
-                disabled={deletionActionLoading}
-              >
-                <Text style={[localStyles.dropdownText, localStyles.logoutText]}>
-                  {deletionRequestStatus === 'PENDING' ? 'Cancel Deletion Request' : 'Delete My Account'}
-                </Text>
-              </TouchableOpacity>
+              {items.map((item) => (
+                <TouchableOpacity
+                  key={item.label}
+                  style={localStyles.dropdownItem}
+                  disabled={item.disabled}
+                  onPress={() => {
+                    setOpen(false); // close the menu first, then run the action
+                    item.onPress();
+                  }}
+                >
+                  <Text
+                    style={[
+                      localStyles.dropdownText,
+                      item.danger && localStyles.dangerText,
+                      item.disabled && localStyles.disabledText,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </>
           )}
 
           <View style={localStyles.divider} />
           <TouchableOpacity style={localStyles.dropdownItem} onPress={handleLogout}>
-            <Text style={[localStyles.dropdownText, localStyles.logoutText]}>Log Out</Text>
+            <Text style={[localStyles.dropdownText, localStyles.dangerText]}>Log Out</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -105,7 +83,7 @@ function HeaderMenu({
 }
 
 const localStyles = StyleSheet.create({
-      wrapper: {
+  wrapper: {
     position: 'absolute',
     top: spacing.lg + spacing.md - 2,
     right: spacing.md,
@@ -116,9 +94,9 @@ const localStyles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 8,
-    backgroundColor: colors.cardBackground,
+    backgroundColor: 'rgba(12,10,22,0.55)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -126,38 +104,38 @@ const localStyles = StyleSheet.create({
     width: 16,
     height: 2,
     borderRadius: 2,
-    backgroundColor: colors.textPrimary,
+    backgroundColor: '#fff',
     marginVertical: 1.5,
   },
   dropdown: {
     position: 'absolute',
     top: 40,
     right: 0,
-    width: 170,
-    backgroundColor: colors.background,
+    width: 210,
+    backgroundColor: '#241d3d',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
     overflow: 'hidden',
   },
   dropdownItem: {
-    paddingVertical: 11,
-    paddingHorizontal: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
   dropdownText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: '#fff',
   },
   disabledText: {
-    color: colors.border,
+    color: 'rgba(255,255,255,0.35)',
   },
-  logoutText: {
-    color: colors.error,
+  dangerText: {
+    color: '#ff9d9d',
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
 });
 

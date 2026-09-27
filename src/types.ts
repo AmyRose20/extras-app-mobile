@@ -19,6 +19,12 @@ export type Screen =
 
 export type Role = 'ADMIN' | 'EXTRA';
 
+// A production, e.g. "Wednesday season 3" (matches GET /productions)
+export type Production = {
+  id: string;
+  name: string;
+};
+
 export type Invite = {
   id: string;
   status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
@@ -26,7 +32,7 @@ export type Invite = {
   callRequest: {
     description: string;
     shootDay: {
-      productionName: string;
+      production: Production;
       location: string;
       date: string;
     };
@@ -43,7 +49,7 @@ export type Tally = {
 // One row in the admin's shoot days list (matches GET /shoot-days)
 export type ShootDaySummary = {
   id: string;
-  productionName: string;
+  production: Production;
   date: string;
   location: string;
   isPast: boolean;
@@ -87,6 +93,7 @@ export type ExtraProfileDetail = {
   facePhotoUrl: string | null;
   fullBodyPhotoUrl: string | null;
   deletionRequestStatus: string;
+  productions: Production[];
 };
 
 // One row in the admin's pending-deletion-requests list (matches GET /deletion-requests)
@@ -97,4 +104,14 @@ export type DeletionRequestSummary = {
   deletionRequestedAt: string;
   deletionRequestedBy: 'EXTRA' | 'ADMIN';
   deletionReason: string | null;
+};
+
+// What the app-wide confirmation dialog should show
+export type DialogConfig = {
+  title: string;
+  message: string;
+  confirmText?: string;
+  onConfirm?: () => void;
+  cancelText?: string;
+  destructive?: boolean;
 };

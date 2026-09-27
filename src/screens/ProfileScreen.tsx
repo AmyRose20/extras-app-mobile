@@ -47,6 +47,10 @@ type Props = {
   uploadingPhoto: boolean;
   showSavedPopup: boolean;
   deletionRequestStatus: string;
+  allProductionNames: string[];
+  myProductionNames: string[];
+  onToggleProduction: (name: string) => void;
+  productionsError: string;
 };
 
 function PhotoPreview({
@@ -120,136 +124,196 @@ function ProfileScreen({
   uploadingPhoto,
   showSavedPopup,
   deletionRequestStatus,
+  allProductionNames,
+  myProductionNames,
+  onToggleProduction,
+  productionsError,
 }: Props) {
   const allSkills = [...skills, ...otherSkills.split(',').map((s) => s.trim()).filter(Boolean)];
   const allLanguages = [...languages, ...otherLanguages.split(',').map((l) => l.trim()).filter(Boolean)];
   const allAvailability = [...availability, ...otherAvailability.split(',').map((a) => a.trim()).filter(Boolean)];
 
   // EDIT MODE (and loading) — unchanged, uses your existing shared styles.
+    // EDIT MODE (and loading) — dusk theme, matching view mode and the other screens.
   if (loading || isEditingProfile) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ScrollView>
-          <Text style={styles.title}>{isEditingProfile ? 'Edit My Profile' : 'My Profile'}</Text>
+      <LinearGradient
+        colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
+        locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
+        style={profileStyles.container}
+      >
+        <SafeAreaView style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={profileStyles.scrollContent} keyboardShouldPersistTaps="handled">
+            <Text style={[profileStyles.title, { marginBottom: 16 }]}>
+              {isEditingProfile ? 'Edit My Profile' : 'My Profile'}
+            </Text>
 
-          {loading ? (
-            <Text style={styles.message}>Loading...</Text>
-          ) : (
-            <>
-              <Text style={styles.message}>Name: {name}</Text>
+            {loading ? (
+              <>
+                <Text style={profileStyles.messageText}>Loading...</Text>
+                <TouchableOpacity style={profileStyles.buttonGhost} onPress={onBack}>
+                  <Text style={profileStyles.buttonGhostText}>Back</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* About me */}
+                <View style={profileStyles.card}>
+                  <Text style={profileStyles.cardTitle}>About Me</Text>
 
-              <Text style={styles.fieldLabel}>Gender</Text>
-              <Picker selectedValue={gender} onValueChange={(value) => setGender(value)} style={{ marginBottom: 16 }}>
-                <Picker.Item label="Select gender..." value="" />
-                <Picker.Item label="Male" value="MALE" />
-                <Picker.Item label="Female" value="FEMALE" />
-              </Picker>
+                  <View style={profileStyles.field}>
+                    <Text style={profileStyles.label}>Name</Text>
+                    <Text style={profileStyles.value}>{name}</Text>
+                  </View>
 
-              <Text style={styles.fieldLabel}>Age</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Age"
-                value={age}
-                onChangeText={setAge}
-                keyboardType="numeric"
-              />
+                  <Text style={profileStyles.inputLabel}>Gender</Text>
+                  <View style={profileStyles.pickerWrapper}>
+                    <Picker
+                      selectedValue={gender}
+                      onValueChange={(value) => setGender(value)}
+                      style={profileStyles.picker}
+                      dropdownIconColor="#fff"
+                    >
+                      <Picker.Item label="Select gender..." value="" color="#1a1330" />
+                      <Picker.Item label="Male" value="MALE" color="#1a1330" />
+                      <Picker.Item label="Female" value="FEMALE" color="#1a1330" />
+                    </Picker>
+                  </View>
 
-              <Text style={styles.fieldLabel}>Height (cm)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Height (cm)"
-                value={heightCm}
-                onChangeText={setHeightCm}
-                keyboardType="numeric"
-              />
+                  <Text style={profileStyles.inputLabel}>Age</Text>
+                  <TextInput
+                    style={profileStyles.input}
+                    placeholder="Age"
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    value={age}
+                    onChangeText={setAge}
+                    keyboardType="numeric"
+                  />
 
-              <ChipMultiSelect
-                label="Skills"
-                options={SKILL_OPTIONS}
-                selected={skills}
-                onToggle={onToggleSkill}
-                otherText={otherSkills}
-                onOtherTextChange={setOtherSkills}
-              />
-
-              <ChipMultiSelect
-                label="Languages"
-                options={LANGUAGE_OPTIONS}
-                selected={languages}
-                onToggle={onToggleLanguage}
-                otherText={otherLanguages}
-                onOtherTextChange={setOtherLanguages}
-              />
-
-              <ChipMultiSelect
-                label="Availability"
-                options={AVAILABILITY_OPTIONS}
-                selected={availability}
-                onToggle={onToggleAvailability}
-                otherText={otherAvailability}
-                onOtherTextChange={setOtherAvailability}
-              />
-
-              <View style={{ flexDirection: 'row', gap: 16 }}>
-                <View>
-                  <PhotoPreview uri={pendingFacePhoto || facePhotoUrl || null} width={140} height={140} />
-                  <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={onPickFacePhoto}>
-                    <Text style={styles.buttonText}>Choose Face Photo</Text>
-                  </TouchableOpacity>
+                  <Text style={profileStyles.inputLabel}>Height (cm)</Text>
+                  <TextInput
+                    style={[profileStyles.input, { marginBottom: 0 }]}
+                    placeholder="Height (cm)"
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    value={heightCm}
+                    onChangeText={setHeightCm}
+                    keyboardType="numeric"
+                  />
                 </View>
-                <View>
-                  <PhotoPreview uri={pendingFullBodyPhoto || fullBodyPhotoUrl || null} width={140} height={140} />
-                  <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={onPickFullBodyPhoto}>
-                    <Text style={styles.buttonText}>Choose Full-Body Photo</Text>
-                  </TouchableOpacity>
+
+                {/* Productions */}
+                <View style={profileStyles.card}>
+                  <ChipMultiSelect
+                    label="Productions"
+                    options={allProductionNames}
+                    selected={myProductionNames}
+                    onToggle={onToggleProduction}
+                    emptyText="Couldn't load productions."
+                  />
+                  <Text style={profileStyles.fieldError}>{productionsError || ' '}</Text>
                 </View>
-              </View>
 
-              <Text style={[styles.message, styles.buttonSpacing, { fontWeight: 'bold' }]}>Contact Info</Text>
+                {/* Skills, languages, availability */}
+                <View style={profileStyles.card}>
+                  <ChipMultiSelect
+                    label="Skills"
+                    options={SKILL_OPTIONS}
+                    selected={skills}
+                    onToggle={onToggleSkill}
+                    otherText={otherSkills}
+                    onOtherTextChange={setOtherSkills}
+                  />
+                  <ChipMultiSelect
+                    label="Languages"
+                    options={LANGUAGE_OPTIONS}
+                    selected={languages}
+                    onToggle={onToggleLanguage}
+                    otherText={otherLanguages}
+                    onOtherTextChange={setOtherLanguages}
+                  />
+                  <ChipMultiSelect
+                    label="Availability"
+                    options={AVAILABILITY_OPTIONS}
+                    selected={availability}
+                    onToggle={onToggleAvailability}
+                    otherText={otherAvailability}
+                    onOtherTextChange={setOtherAvailability}
+                  />
+                </View>
 
-              <Text style={styles.fieldLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Phone Number"
-                value={phoneNumber}
-                onChangeText={setPhoneNumber}
-                keyboardType="phone-pad"
-              />
+                {/* Photos */}
+                <View style={profileStyles.card}>
+                  <Text style={profileStyles.cardTitle}>Photos</Text>
+                  <View style={{ flexDirection: 'row', gap: 16 }}>
+                    <View>
+                      <Text style={profileStyles.label}>Face photo</Text>
+                      <PhotoPreview uri={pendingFacePhoto || facePhotoUrl || null} width={140} height={140} dark />
+                      <TouchableOpacity style={profileStyles.smallButton} onPress={onPickFacePhoto}>
+                        <Text style={profileStyles.smallButtonText}>Choose photo</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View>
+                      <Text style={profileStyles.label}>Full-body photo</Text>
+                      <PhotoPreview uri={pendingFullBodyPhoto || fullBodyPhotoUrl || null} width={140} height={140} dark />
+                      <TouchableOpacity style={profileStyles.smallButton} onPress={onPickFullBodyPhoto}>
+                        <Text style={profileStyles.smallButtonText}>Choose photo</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
 
-              <Text style={styles.fieldLabel}>Email</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Email"
-                value={contactEmail}
-                onChangeText={setContactEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <Text style={[styles.message, { color: '#DC2626', minHeight: 20 }]}>{contactError || ' '}</Text>
+                {/* Contact info */}
+                <View style={profileStyles.card}>
+                  <Text style={profileStyles.cardTitle}>Contact Info</Text>
 
-              <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={onSave} disabled={uploadingPhoto}>
-                <Text style={styles.buttonText}>{uploadingPhoto ? 'Uploading...' : 'Save'}</Text>
-              </TouchableOpacity>
+                  <Text style={profileStyles.inputLabel}>Phone Number</Text>
+                  <TextInput
+                    style={profileStyles.input}
+                    placeholder="Phone Number"
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                  />
 
-              <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={onCancelEdit}>
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-            </>
+                  <Text style={profileStyles.inputLabel}>Email</Text>
+                  <TextInput
+                    style={[profileStyles.input, { marginBottom: 4 }]}
+                    placeholder="Email"
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    value={contactEmail}
+                    onChangeText={setContactEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  <Text style={profileStyles.fieldError}>{contactError || ' '}</Text>
+                </View>
+
+                {message ? <Text style={profileStyles.messageText}>{message}</Text> : null}
+
+                <TouchableOpacity
+                  style={[profileStyles.button, uploadingPhoto && { opacity: 0.6 }]}
+                  onPress={onSave}
+                  disabled={uploadingPhoto}
+                >
+                  <Text style={profileStyles.buttonText}>{uploadingPhoto ? 'Uploading...' : 'Save'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={profileStyles.buttonGhost} onPress={onCancelEdit}>
+                  <Text style={profileStyles.buttonGhostText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </ScrollView>
+
+          {showSavedPopup && (
+            <View style={profileStyles.savedPopup}>
+              <Text style={profileStyles.savedPopupText}>Saved!</Text>
+            </View>
           )}
-
-          {message ? <Text style={styles.message}>{message}</Text> : null}
-
-          <TouchableOpacity style={[styles.button, styles.buttonSpacing]} onPress={onBack}>
-            <Text style={styles.buttonText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {showSavedPopup && (
-          <View style={styles.savedPopup}>
-            <Text style={styles.savedPopupText}>Saved!</Text>
-          </View>
-        )}
-      </SafeAreaView>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
@@ -281,8 +345,10 @@ function ProfileScreen({
 
           <View style={profileStyles.card}>
             <View style={profileStyles.field}>
-              <Text style={profileStyles.label}>Name</Text>
-              <Text style={profileStyles.value}>{name}</Text>
+              <Text style={profileStyles.label}>Productions</Text>
+              <Text style={profileStyles.value}>
+                {myProductionNames.length > 0 ? myProductionNames.join(', ') : 'Not set'}
+              </Text>
             </View>
             <View style={profileStyles.field}>
               <Text style={profileStyles.label}>Gender</Text>
@@ -470,6 +536,54 @@ const profileStyles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+    inputLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    color: 'rgba(255,255,255,0.72)',
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#fff',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  pickerWrapper: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  picker: {
+    color: '#fff',
+  },
+  fieldError: {
+    color: '#ff9d9d',
+    fontSize: 12,
+    minHeight: 16,
+  },
+  smallButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  smallButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
   savedPopup: {
     position: 'absolute',
     bottom: 30,
@@ -479,6 +593,8 @@ const profileStyles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
+    zIndex: 10,
+    elevation: 10,
   },
   savedPopupText: {
     color: '#1a1330',

@@ -1,7 +1,7 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, Alert, StyleSheet } from 'react-native';
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { DeletionRequestSummary } from '../types';
+import { DeletionRequestSummary, DialogConfig } from '../types';
 
 type Props = {
   requests: DeletionRequestSummary[];
@@ -10,29 +10,27 @@ type Props = {
   onApprove: (userId: string) => void;
   onDeny: (userId: string) => void;
   onBack: () => void;
+  showDialog: (config: DialogConfig) => void; // opens the app-wide confirmation dialog
 };
 
-function DeletionRequestsScreen({ requests, loading, message, onApprove, onDeny, onBack }: Props) {
+function DeletionRequestsScreen({ requests, loading, message, onApprove, onDeny, onBack, showDialog }: Props) {
   const confirmApprove = (request: DeletionRequestSummary) => {
-    Alert.alert(
-      'Approve Deletion?',
-      `${request.name}'s account will be deactivated and they will no longer be able to log in.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Approve', style: 'destructive', onPress: () => onApprove(request.id) },
-      ]
-    );
+    showDialog({
+      title: 'Approve Deletion?',
+      message: `${request.name}'s account will be deactivated and they will no longer be able to log in.`,
+      confirmText: 'Approve',
+      destructive: true,
+      onConfirm: () => onApprove(request.id),
+    });
   };
 
   const confirmDeny = (request: DeletionRequestSummary) => {
-    Alert.alert(
-      'Deny Deletion Request?',
-      `${request.name}'s account will remain active.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Deny', onPress: () => onDeny(request.id) },
-      ]
-    );
+    showDialog({
+      title: 'Deny Deletion Request?',
+      message: `${request.name}'s account will remain active.`,
+      confirmText: 'Deny',
+      onConfirm: () => onDeny(request.id),
+    });
   };
 
   return (
@@ -143,10 +141,12 @@ const deletionStyles = StyleSheet.create({
     alignItems: 'center',
   },
   approveButton: {
-    backgroundColor: '#DC2626',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#8fd9a8',
   },
   approveButtonText: {
-    color: '#fff',
+    color: '#8fd9a8',
     fontWeight: '700',
     fontSize: 13,
   },

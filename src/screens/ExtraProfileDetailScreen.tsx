@@ -1,5 +1,5 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, Image, View, Alert, StyleSheet } from 'react-native';
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, Image, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { ExtraProfileDetail, Tally } from '../types';
 
@@ -20,22 +20,11 @@ type Props = {
   message: string;
   onBack: () => void;
   tally: Tally | null;
-  onRequestDeletion: () => void;
 };
 
-function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally, onRequestDeletion }: Props) {
-  const handleRequestDeletionPress = () => {
-    if (!profile) return;
-    Alert.alert(
-      'Request Account Deletion?',
-      `This sends a deletion request for ${profile.name}'s account to be reviewed.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Request Deletion', style: 'destructive', onPress: onRequestDeletion },
-      ]
-    );
-  };
-
+// Admin's view of one extra. Actions (remove from production, request
+// deletion) live in the hamburger menu, set up in App.tsx.
+function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally }: Props) {
   return (
     <LinearGradient
       colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
@@ -52,14 +41,47 @@ function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally, on
             <Text style={detailStyles.message}>Loading...</Text>
           ) : profile ? (
             <>
+              {profile.deletionRequestStatus === 'PENDING' ? (
+                <View style={detailStyles.pendingBanner}>
+                  <Text style={detailStyles.pendingText}>
+                    Account deletion requested — awaiting approval.
+                  </Text>
+                </View>
+              ) : null}
+
               <View style={detailStyles.card}>
-                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Name: </Text>{profile.name}</Text>
-                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Gender: </Text>{profile.gender || 'Not set'}</Text>
-                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Age: </Text>{profile.age ?? 'Not set'}</Text>
-                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Height (cm): </Text>{profile.heightCm ?? 'Not set'}</Text>
-                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Skills: </Text>{profile.skills.length > 0 ? profile.skills.join(', ') : 'Not set'}</Text>
-                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Languages: </Text>{profile.languages.length > 0 ? profile.languages.join(', ') : 'Not set'}</Text>
-                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Availability: </Text>{profile.availability.length > 0 ? profile.availability.join(', ') : 'Not set'}</Text>
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Name: </Text>
+                  {profile.name}
+                </Text>
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Productions: </Text>
+                  {profile.productions?.length ? profile.productions.map((p) => p.name).join(', ') : 'Not set'}
+                </Text>
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Gender: </Text>
+                  {profile.gender || 'Not set'}
+                </Text>
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Age: </Text>
+                  {profile.age ?? 'Not set'}
+                </Text>
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Height (cm): </Text>
+                  {profile.heightCm ?? 'Not set'}
+                </Text>
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Skills: </Text>
+                  {profile.skills.length > 0 ? profile.skills.join(', ') : 'Not set'}
+                </Text>
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Languages: </Text>
+                  {profile.languages.length > 0 ? profile.languages.join(', ') : 'Not set'}
+                </Text>
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Availability: </Text>
+                  {profile.availability.length > 0 ? profile.availability.join(', ') : 'Not set'}
+                </Text>
 
                 <View style={detailStyles.photoRow}>
                   <View>
@@ -73,8 +95,14 @@ function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally, on
                 </View>
 
                 <Text style={detailStyles.sectionHeading}>Contact Info</Text>
-                <Text style={detailStyles.detailRow}><Text style={detailStyles.fieldLabelInline}>Phone: </Text>{profile.phoneNumber || 'Not set'}</Text>
-                <Text style={[detailStyles.detailRow, { marginBottom: 0 }]}><Text style={detailStyles.fieldLabelInline}>Email: </Text>{profile.contactEmail || 'Not set'}</Text>
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Phone: </Text>
+                  {profile.phoneNumber || 'Not set'}
+                </Text>
+                <Text style={[detailStyles.detailRow, { marginBottom: 0 }]}>
+                  <Text style={detailStyles.fieldLabelInline}>Email: </Text>
+                  {profile.contactEmail || 'Not set'}
+                </Text>
               </View>
 
               {tally ? (
@@ -100,30 +128,12 @@ function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally, on
                   ) : null}
                 </View>
               ) : null}
-
-              <View style={detailStyles.card}>
-                <Text style={detailStyles.widgetTitle}>Account</Text>
-                {profile.deletionRequestStatus === 'PENDING' ? (
-                  <Text style={detailStyles.pendingText}>
-                    Account deletion already requested — awaiting approval.
-                  </Text>
-                ) : (
-                  <>
-                    <Text style={detailStyles.accountText}>
-                      Deleting this account will prevent the extra from logging in.
-                    </Text>
-                    <TouchableOpacity style={detailStyles.dangerButton} onPress={handleRequestDeletionPress}>
-                      <Text style={detailStyles.dangerButtonText}>Request Account Deletion</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
             </>
           ) : (
             <Text style={detailStyles.message}>Profile not found.</Text>
           )}
 
-          {message ? <Text style={detailStyles.message}>{message}</Text> : null}
+          {message ? <Text style={detailStyles.errorMessage}>{message}</Text> : null}
 
           <TouchableOpacity style={detailStyles.buttonGhost} onPress={onBack}>
             <Text style={detailStyles.buttonGhostText}>Back</Text>
@@ -153,6 +163,25 @@ const detailStyles = StyleSheet.create({
     fontSize: 14,
     color: '#fff',
     marginBottom: 12,
+  },
+  errorMessage: {
+    fontSize: 13,
+    color: '#ff9d9d',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  pendingBanner: {
+    backgroundColor: 'rgba(220,38,38,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(220,38,38,0.4)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  pendingText: {
+    fontSize: 13,
+    color: '#ff9d9d',
+    textAlign: 'center',
   },
   card: {
     backgroundColor: 'rgba(12,10,22,0.55)',
@@ -237,28 +266,6 @@ const detailStyles = StyleSheet.create({
     color: '#ff9d9d',
     textAlign: 'center',
     marginTop: 12,
-  },
-  pendingText: {
-    fontSize: 13,
-    color: '#ff9d9d',
-    textAlign: 'center',
-  },
-  accountText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.78)',
-    marginBottom: 10,
-  },
-  dangerButton: {
-    backgroundColor: '#DC2626',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignSelf: 'center',
-  },
-  dangerButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
   },
   buttonGhost: {
     backgroundColor: 'transparent',
