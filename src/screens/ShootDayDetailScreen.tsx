@@ -6,6 +6,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { API_URL } from '../api';
 import { ShootDayDetail, ShootDaySummary, CallRequestSummary, Location } from '../types';
 import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
+import MapPinPicker, { Pin } from '../components/MapPinPicker';
 
 const OTHER = 'OTHER'; // dropdown value for "Other (enter address)"
 
@@ -71,6 +72,8 @@ function ShootDayDetailScreen({
   const [selectedLocationId, setSelectedLocationId] = useState<string>(OTHER);
   const [otherName, setOtherName] = useState('');
   const [otherAddress, setOtherAddress] = useState('');
+  const [otherPin, setOtherPin] = useState<Pin | null>(null); // map pin for "Other"
+  const [otherNameEdited, setOtherNameEdited] = useState(false); // true once the coordinator types a name
   const [saveForNextTime, setSaveForNextTime] = useState(false);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -98,10 +101,19 @@ function ShootDayDetailScreen({
       setSelectedLocationId(match.id);
       setOtherName('');
       setOtherAddress('');
+      setOtherPin(null);
+      setOtherNameEdited(false);
     } else {
       setSelectedLocationId(OTHER);
       setOtherName(shootDay.location);
       setOtherAddress(shootDay.locationAddress ?? '');
+      // Open the map on the existing pin, if this shoot day has one
+      setOtherPin(
+        shootDay.latitude != null && shootDay.longitude != null
+          ? { latitude: shootDay.latitude, longitude: shootDay.longitude }
+          : null
+      );
+      setOtherNameEdited(true); // keep the existing name if the pin is moved
     }
 
     setSaveForNextTime(false);
@@ -116,15 +128,29 @@ function ShootDayDetailScreen({
     setSaveError('');
   };
 
-  // The meeting point currently chosen in the form, or null if incomplete
-  const getCurrentMeetingPoint = (): { name: string; address: string } | null => {
+  // The meeting point currently chosen in the form, or null if incomplete.
+  // Includes the map pin: from the map for "Other", or from the saved location.
+  const getCurrentMeetingPoint = (): {
+    name: string;
+    address: string;
+    latitude: number | null;
+    longitude: number | null;
+  } | null => {
     if (selectedLocationId === OTHER) {
       const name = otherName.trim();
       const address = otherAddress.trim();
-      return name && address ? { name, address } : null;
+      if (!name || !address) return null;
+      return {
+        name,
+        address,
+        latitude: otherPin?.latitude ?? null,
+        longitude: otherPin?.longitude ?? null,
+      };
     }
     const saved = locations.find((l) => l.id === selectedLocationId);
-    return saved ? { name: saved.name, address: saved.address } : null;
+    return saved
+      ? { name: saved.name, address: saved.address, latitude: saved.latitude, longitude: saved.longitude }
+      : null;
   };
 
   const handleDateChange = (event: DateTimePickerEvent, selected?: Date) => {
@@ -160,7 +186,11 @@ function ShootDayDetailScreen({
 
     const meetingPoint = getCurrentMeetingPoint();
     if (!meetingPoint) {
-      setLocationError('Enter a meeting point name and address.');
+      setLocationError(
+        selectedLocationId === OTHER && !otherPin && !otherAddress
+          ? 'Search for the meeting point, or tap the map to drop a pin.'
+          : 'Give the meeting point a name.'
+      );
       return;
     }
     setLocationError('');
@@ -174,7 +204,12 @@ function ShootDayDetailScreen({
           const locResponse = await fetch(`${API_URL}/locations`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ name: meetingPoint.name, address: meetingPoint.address }),
+            body: JSON.stringify({
+              name: meetingPoint.name,
+              address: meetingPoint.address,
+              latitude: meetingPoint.latitude,
+              longitude: meetingPoint.longitude,
+            }),
           });
           if (locResponse.ok) {
             const saved: Location = await locResponse.json();
@@ -199,6 +234,8 @@ function ShootDayDetailScreen({
           estimatedWrapAt: currentWrap ? currentWrap.toISOString() : null,
           location: meetingPoint.name,
           locationAddress: meetingPoint.address,
+          latitude: meetingPoint.latitude,
+          longitude: meetingPoint.longitude,
         }),
       });
       const data = await response.json();
@@ -348,35 +385,51 @@ function ShootDayDetailScreen({
 
                     {selectedLocationId === OTHER ? (
                       <>
-                        <TextInput
-                          style={detailStyles.input}
-                          value={otherName}
-                          onChangeText={(text) => {
-                            setOtherName(text);
+                        <MapPinPicker
+                          token={token}
+                          pin={otherPin}
+                          onPinChange={(p) => {
+                            setOtherPin(p);
                             if (locationError) setLocationError('');
                           }}
-                          placeholder="Name, e.g. Brittas Bay beach car park"
-                          placeholderTextColor="rgba(255,255,255,0.5)"
-                        />
-                        <TextInput
-                          style={detailStyles.input}
-                          value={otherAddress}
-                          onChangeText={(text) => {
-                            setOtherAddress(text);
-                            if (locationError) setLocationError('');
+                          onAddressFound={(address) => {
+                            setOtherAddress(address);
+                            if (!otherNameEdited) setOtherName(address.split(',')[0].trim());
                           }}
-                          placeholder="Address, e.g. Brittas Bay, Co. Wicklow"
-                          placeholderTextColor="rgba(255,255,255,0.5)"
+                          onNameFound={(name) => {
+                            if (!otherNameEdited) setOtherName(name);
+                          }}
                         />
-                        <TouchableOpacity
-                          style={detailStyles.checkboxRow}
-                          onPress={() => setSaveForNextTime((prev) => !prev)}
-                        >
-                          <View style={[detailStyles.checkbox, saveForNextTime && detailStyles.checkboxChecked]}>
-                            {saveForNextTime ? <Text style={detailStyles.checkmark}>✓</Text> : null}
-                          </View>
-                          <Text style={detailStyles.checkboxLabel}>Save this location for next time</Text>
-                        </TouchableOpacity>
+
+                        {/* Shown once there's a pin, or if this shoot day already has an address */}
+                        {otherPin || otherAddress ? (
+                          <>
+                            <Text style={detailStyles.pinAddress}>📍 {otherAddress}</Text>
+
+                            <Text style={detailStyles.fieldLabel}>Name for extras</Text>
+                            <TextInput
+                              style={detailStyles.input}
+                              value={otherName}
+                              onChangeText={(text) => {
+                                setOtherName(text);
+                                setOtherNameEdited(true);
+                                if (locationError) setLocationError('');
+                              }}
+                              placeholder="e.g. Beach car park"
+                              placeholderTextColor="rgba(255,255,255,0.5)"
+                            />
+
+                            <TouchableOpacity
+                              style={detailStyles.checkboxRow}
+                              onPress={() => setSaveForNextTime((prev) => !prev)}
+                            >
+                              <View style={[detailStyles.checkbox, saveForNextTime && detailStyles.checkboxChecked]}>
+                                {saveForNextTime ? <Text style={detailStyles.checkmark}>✓</Text> : null}
+                              </View>
+                              <Text style={detailStyles.checkboxLabel}>Save this location for next time</Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : null}
                       </>
                     ) : (
                       <Text style={detailStyles.hintText}>
@@ -718,6 +771,11 @@ const detailStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     marginBottom: 4,
     marginLeft: 4,
+  },
+    pinAddress: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 10,
   },
   checkboxRow: {
     flexDirection: 'row',
