@@ -25,6 +25,13 @@ export type Production = {
   name: string;
 };
 
+// A saved meeting point for the coordinator's production (matches GET /locations)
+export type Location = {
+  id: string;
+  name: string;
+  address: string;
+};
+
 export type Invite = {
   id: string;
   status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
@@ -34,6 +41,8 @@ export type Invite = {
     shootDay: {
       production: Production;
       location: string;
+      locationAddress: string | null;
+      estimatedWrapAt: string | null;
       date: string;
     };
   };
@@ -52,6 +61,8 @@ export type ShootDaySummary = {
   production: Production;
   date: string;
   location: string;
+  locationAddress: string | null;
+  estimatedWrapAt: string | null;
   isPast: boolean;
 };
 
