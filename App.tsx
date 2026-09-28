@@ -28,6 +28,8 @@ function AppContent(): React.JSX.Element {
   const insets = useSafeAreaInsets(); // how much space the status bar etc. take up
   const [screen, setScreen] = useState<Screen>('login');
   const [dialog, setDialog] = useState<DialogConfig | null>(null); // null = no dialog open
+  // Set when Create Call Request is opened from a shoot day (undefined = opened from Home)
+  const [callRequestShootDayId, setCallRequestShootDayId] = useState<string | undefined>(undefined);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Shows a short message at the bottom of any screen for 3 seconds
@@ -900,7 +902,10 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           token={token}
           shootDays={shootDays}
           invites={invites}
-          onNavigate={(target) => setScreen(target)}
+          onNavigate={(target) => {
+            setCallRequestShootDayId(undefined); // opening from Home never pre-selects a shoot day
+            setScreen(target);
+          }}
           onSelectShootDay={(id) => handleSelectShootDay(id, 'home')}
         />
       );
@@ -1060,18 +1065,39 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           onCancelEditCallRequest={handleCancelEditCallRequest}
           onSaveCallRequest={handleSaveCallRequest}
           onViewResponses={handleViewResponses}
+          onAddCallRequest={() => {
+            if (selectedShootDay) {
+              setCallRequestShootDayId(selectedShootDay.id);
+              setScreen('createCallRequest');
+            }
+          }}
         />
       );
     }
 
     if (screen === 'createCallRequest') {
+      const fromShootDayId = callRequestShootDayId; // undefined if opened from Home
       return (
         <CreateCallRequestScreen
           token={token}
-          onBack={() => setScreen('home')}
+          initialShootDayId={fromShootDayId}
+          onBack={() => {
+            setCallRequestShootDayId(undefined);
+            if (fromShootDayId) {
+              setScreen('shootDayDetail'); // back to the shoot day it was opened from
+            } else {
+              setScreen('home');
+            }
+          }}
           onCreated={(callRequestId) => {
+            setCallRequestShootDayId(undefined);
             setActiveCallRequestId(callRequestId);
-            setCallRequestStatusReturnTo('home');
+            if (fromShootDayId) {
+              loadShootDayDetail(fromShootDayId); // refresh so the new call request shows
+              setCallRequestStatusReturnTo('shootDayDetail');
+            } else {
+              setCallRequestStatusReturnTo('home');
+            }
             setScreen('callRequestStatus');
           }}
         />

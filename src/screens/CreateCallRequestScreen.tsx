@@ -12,6 +12,7 @@ type Props = {
   token: string;
   onBack: () => void;
   onCreated: (callRequestId: string) => void;
+  initialShootDayId?: string; // pre-select this shoot day (when opened from a shoot day)
 };
 
 const GENDER_OPTIONS = [
@@ -19,7 +20,7 @@ const GENDER_OPTIONS = [
   { label: 'Female', value: 'FEMALE' },
 ];
 
-function CreateCallRequestScreen({ token, onBack, onCreated }: Props) {
+function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }: Props) {
   // ----- Upcoming shoot days for the dropdown -----
   const [shootDays, setShootDays] = useState<ShootDaySummary[]>([]);
   const [shootDaysLoading, setShootDaysLoading] = useState(true);
@@ -37,8 +38,14 @@ function CreateCallRequestScreen({ token, onBack, onCreated }: Props) {
         const upcoming = data
           .filter((d) => !d.isPast)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        setShootDays(upcoming);
-        if (upcoming.length > 0) setShootDayId(upcoming[0].id);
+          setShootDays(upcoming);
+        // Start on the shoot day we were opened from, if there is one; otherwise the soonest
+        const initial = upcoming.find((d) => d.id === initialShootDayId);
+        if (initial) {
+          setShootDayId(initial.id);
+        } else if (upcoming.length > 0) {
+          setShootDayId(upcoming[0].id);
+        }
       } catch (error) {
         // handled by the "no shoot days" message below
       } finally {

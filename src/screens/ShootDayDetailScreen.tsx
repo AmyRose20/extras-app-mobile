@@ -26,6 +26,7 @@ type Props = {
   onCancelEditCallRequest: () => void;
   onSaveCallRequest: () => void;
   onViewResponses: (callRequestId: string) => void;
+    onAddCallRequest: () => void; // opens Create Call Request with this shoot day selected
 };
 
 function ShootDayDetailScreen({
@@ -44,6 +45,7 @@ function ShootDayDetailScreen({
   onCancelEditCallRequest,
   onSaveCallRequest,
   onViewResponses,
+  onAddCallRequest,
 }: Props) {
   // ----- Saved meeting points for the dropdown -----
   const [locations, setLocations] = useState<Location[]>([]);
@@ -405,7 +407,14 @@ function ShootDayDetailScreen({
                 )}
               </View>
 
-              <Text style={detailStyles.sectionHeading}>Call Requests</Text>
+              <View style={detailStyles.sectionHeaderRow}>
+                <Text style={[detailStyles.sectionHeading, { marginBottom: 0 }]}>Call Requests</Text>
+                {!shootDay.isPast ? (
+                  <TouchableOpacity onPress={onAddCallRequest}>
+                    <Text style={detailStyles.addLinkText}>+ Add Call Request</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
 
               {shootDay.callRequests.length === 0 ? (
                 <Text style={detailStyles.message}>No call requests for this shoot day yet.</Text>
@@ -538,6 +547,13 @@ const detailStyles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     color: 'rgba(255,255,255,0.72)',
+    marginTop: 8,
+    marginBottom: 10,
+  },
+    sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginTop: 8,
     marginBottom: 10,
   },
