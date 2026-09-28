@@ -49,8 +49,6 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
   const [batchDays, setBatchDays] = useState<BatchDay[]>([]);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [showCreatedPopup, setShowCreatedPopup] = useState(false);
-  const [createdCount, setCreatedCount] = useState(0);
   const [locationError, setLocationError] = useState('');
   const [dateError, setDateError] = useState('');
 
@@ -281,13 +279,6 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
       style={bulkStyles.container}
     >
       <SafeAreaView style={{ flex: 1 }}>
-        {showCreatedPopup ? (
-          <View style={bulkStyles.savedPopup}>
-            <Text style={bulkStyles.savedPopupText}>
-              Created {createdCount} shoot {createdCount === 1 ? 'day' : 'days'}.
-            </Text>
-          </View>
-        ) : null}
 
         <ScrollView contentContainerStyle={bulkStyles.scrollContent} keyboardShouldPersistTaps="handled">
           <Text style={bulkStyles.title}>Add Shoot Days</Text>
@@ -669,23 +660,6 @@ const bulkStyles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
-  },
-  savedPopup: {
-    position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    zIndex: 10,
-    elevation: 10,
-  },
-  savedPopupText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
   },
 });
 

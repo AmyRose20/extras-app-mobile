@@ -5,7 +5,6 @@ export type Screen =
   | 'home'
   | 'profile'
   | 'invites'
-  | 'createShootDay'
   | 'createCallRequest'
   | 'callRequestStatus'
   | 'extrasList'
@@ -14,7 +13,6 @@ export type Screen =
   | 'shootDayDetail'
   | 'inviteList'
   | 'bulkCreateShootDays'
-  | 'calendar'
   | 'deletionRequests';
 
 export type Role = 'ADMIN' | 'EXTRA';

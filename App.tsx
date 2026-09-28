@@ -121,8 +121,7 @@ function AppContent(): React.JSX.Element {
   const [selectedShootDay, setSelectedShootDay] = useState<ShootDayDetail | null>(null);
   const [shootDayDetailLoading, setShootDayDetailLoading] = useState(false);
   const [shootDayDetailMessage, setShootDayDetailMessage] = useState('');
-  const [shootDayDateError, setShootDayDateError] = useState('');
-  const [isEditingDate, setIsEditingDate] = useState(false);
+
   const [editDateTime, setEditDateTime] = useState<Date | null>(null);
   const [editingCallRequestId, setEditingCallRequestId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState('');
@@ -695,7 +694,6 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     setShootDayDetailLoading(true);
     setShootDayDetailMessage('');
     setSelectedShootDay(null);
-    setIsEditingDate(false);
     setEditingCallRequestId(null);
     try {
       const response = await fetch(`${API_URL}/shoot-days/${id}`, {
@@ -720,48 +718,6 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     setShootDayDetailReturnTo(returnTo);
     setScreen('shootDayDetail');
     loadShootDayDetail(id);
-  };
-
-  const handleStartEditDate = () => {
-    if (!selectedShootDay) return;
-    setEditDateTime(new Date(selectedShootDay.date));
-    setShootDayDateError('');
-    setIsEditingDate(true);
-  };
-
-  const handleCancelEditDate = () => {
-    setIsEditingDate(false);
-    setEditDateTime(null);
-    setShootDayDateError('');
-  };
-
-  const handleSaveDate = async () => {
-    if (!editDateTime || !selectedShootDay) return;
-    setShootDayDetailMessage('');
-    setShootDayDateError('');
-    try {
-      const response = await fetch(`${API_URL}/shoot-days/${selectedShootDay.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ date: editDateTime.toISOString() }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setShootDayDateError(data.error);
-        return;
-      }
-
-      setIsEditingDate(false);
-      setEditDateTime(null);
-      loadShootDayDetail(selectedShootDay.id);
-    } catch (error) {
-      setShootDayDetailMessage('Something went wrong updating that shoot day.');
-    }
   };
 
   const handleStartEditCallRequest = (callRequest: CallRequestSummary) => {
@@ -1151,6 +1107,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
 
     // ----- Hamburger menu items for the current screen -----
   const menuItems: MenuItem[] = [];
+
  
   // Coordinators: deletion requests live in the menu (they're only needed occasionally)
   if (role === 'ADMIN') {
