@@ -1151,6 +1151,15 @@ const adminRequestDeletionForExtra = async (userId: string) => {
 
     // ----- Hamburger menu items for the current screen -----
   const menuItems: MenuItem[] = [];
+ 
+  // Coordinators: deletion requests live in the menu (they're only needed occasionally)
+  if (role === 'ADMIN') {
+    menuItems.push({
+      label: 'Deletion Requests',
+      disabled: screen === 'deletionRequests', // greyed out when you're already there
+      onPress: () => setScreen('deletionRequests'),
+    });
+  }
 
   // Extras: request (or cancel) deletion of their own account
   if (role === 'EXTRA') {

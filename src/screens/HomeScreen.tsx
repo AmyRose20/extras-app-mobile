@@ -165,10 +165,6 @@ function HomeScreen({ userName, role, token, shootDays, invites, onNavigate, onS
               <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('extrasList')}>
                 <Text style={homeStyles.buttonText}>View Extra Profiles</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('deletionRequests')}>
-                <Text style={homeStyles.buttonText}>Deletion Requests</Text>
-              </TouchableOpacity>
             </>
           )}
         </ScrollView>
