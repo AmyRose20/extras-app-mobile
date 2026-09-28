@@ -30,6 +30,8 @@ export type Location = {
   id: string;
   name: string;
   address: string;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type Invite = {
@@ -42,6 +44,8 @@ export type Invite = {
       production: Production;
       location: string;
       locationAddress: string | null;
+      latitude: number | null;
+      longitude: number | null;
       estimatedWrapAt: string | null;
       date: string;
     };
@@ -63,6 +67,8 @@ export type ShootDaySummary = {
   location: string;
   locationAddress: string | null;
   estimatedWrapAt: string | null;
+  latitude: number | null;
+  longitude: number | null;
   isPast: boolean;
 };
 

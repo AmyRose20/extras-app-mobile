@@ -6,6 +6,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { API_URL } from '../api';
 import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
 import { Location } from '../types';
+import MapPinPicker, { Pin } from '../components/MapPinPicker';
 
 const OTHER = 'OTHER'; // dropdown value for "Other (enter address)"
 
@@ -14,6 +15,8 @@ type BatchDay = {
   location: string;          // meeting point name
   locationAddress: string;
   estimatedWrapAt: Date | null;
+  latitude: number | null;   // map pin (null if none)
+  longitude: number | null;
 };
 
 type Props = {
@@ -29,6 +32,8 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
   const [selectedLocationId, setSelectedLocationId] = useState<string>(OTHER);
   const [otherName, setOtherName] = useState('');
   const [otherAddress, setOtherAddress] = useState('');
+  const [otherNameEdited, setOtherNameEdited] = useState(false); // true once the coordinator types a name
+  const [otherPin, setOtherPin] = useState<Pin | null>(null); // map pin for "Other"
   const [saveForNextTime, setSaveForNextTime] = useState(false);
   // True once the coordinator changes anything in the "Add a Day" form.
   // Used to decide whether the form's day should be created along with the batch.
@@ -69,20 +74,39 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
     loadLocations();
   }, [token]);
 
-  // The meeting point currently chosen in the form, or null if incomplete
-  const getCurrentMeetingPoint = (): { name: string; address: string } | null => {
+  // The meeting point currently chosen in the form, or null if incomplete.
+  // Includes the map pin: from the map for "Other", or from the saved location.
+  const getCurrentMeetingPoint = (): {
+    name: string;
+    address: string;
+    latitude: number | null;
+    longitude: number | null;
+  } | null => {
     if (selectedLocationId === OTHER) {
       const name = otherName.trim();
       const address = otherAddress.trim();
-      return name && address ? { name, address } : null;
+      if (!name || !address) return null;
+      return {
+        name,
+        address,
+        latitude: otherPin?.latitude ?? null,
+        longitude: otherPin?.longitude ?? null,
+      };
     }
     const saved = locations.find((l) => l.id === selectedLocationId);
-    return saved ? { name: saved.name, address: saved.address } : null;
+    return saved
+      ? { name: saved.name, address: saved.address, latitude: saved.latitude, longitude: saved.longitude }
+      : null;
   };
 
   // Saves an "Other" location to this production's list, adds it to the
   // dropdown, and selects it so the next day can reuse it.
-  const saveLocation = async (name: string, address: string) => {
+  const saveLocation = async (
+    name: string,
+    address: string,
+    latitude: number | null,
+    longitude: number | null
+  ) => {
     try {
       const response = await fetch(`${API_URL}/locations`, {
         method: 'POST',
@@ -90,7 +114,7 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name, address }),
+      body: JSON.stringify({ name, address, latitude, longitude }),
       });
       if (!response.ok) return;
 
@@ -143,7 +167,11 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
   const buildCurrentDay = (): BatchDay | null => {
     const meetingPoint = getCurrentMeetingPoint();
     if (!meetingPoint) {
-      setLocationError('Enter a meeting point name and address.');
+      setLocationError(
+        selectedLocationId === OTHER && !otherPin
+          ? 'Search for the meeting point, or tap the map to drop a pin.'
+          : 'Give the meeting point a name.'
+      );
       return null;
     }
     setLocationError('');
@@ -152,6 +180,8 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
       location: meetingPoint.name,
       locationAddress: meetingPoint.address,
       estimatedWrapAt: currentWrap,
+      latitude: meetingPoint.latitude,
+      longitude: meetingPoint.longitude,
     };
   };
 
@@ -161,6 +191,8 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
     setOtherName('');
     setOtherAddress('');
     setSaveForNextTime(false);
+    setOtherPin(null);
+    setOtherNameEdited(false);
     // keep the selected meeting point — the next day is often at the same studio
   };
 
@@ -175,7 +207,7 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
   setMessage('');
 
   if (shouldSave) {
-    await saveLocation(day.location, day.locationAddress);
+      await saveLocation(day.location, day.locationAddress, day.latitude, day.longitude);
     }
   };
 
@@ -199,7 +231,7 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
       if (!day) return; // shows the meeting point error
       daysToCreate.push(day);
       if (selectedLocationId === OTHER && saveForNextTime) {
-        await saveLocation(day.location, day.locationAddress);
+        await saveLocation(day.location, day.locationAddress, day.latitude, day.longitude);
       }
     }
 
@@ -217,6 +249,8 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
             location: day.location,
             locationAddress: day.locationAddress,
             estimatedWrapAt: day.estimatedWrapAt ? day.estimatedWrapAt.toISOString() : null,
+            latitude: day.latitude,
+            longitude: day.longitude,
           })),
         }),
       });
@@ -285,39 +319,57 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
             </Picker>
           </View>
 
-          {selectedLocationId === OTHER ? (
+                   {selectedLocationId === OTHER ? (
             <>
-              <TextInput
-                style={bulkStyles.input}
-                value={otherName}
-                onChangeText={(text) => {
-                  setOtherName(text);
+              <MapPinPicker
+                token={token}
+                pin={otherPin}
+                onPinChange={(p) => {
+                  setOtherPin(p);
                   setFormTouched(true);
                   if (locationError) setLocationError('');
                 }}
-                placeholder="Name, e.g. Brittas Bay beach car park"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-              />
-              <TextInput
-                style={bulkStyles.input}
-                value={otherAddress}
-                onChangeText={(text) => {
-                  setOtherAddress(text);
-                  setFormTouched(true);
-                  if (locationError) setLocationError('');
+                onAddressFound={(address) => {
+                  setOtherAddress(address);
+                  // Until the coordinator types a name, use the first part of the address
+                  if (!otherNameEdited) setOtherName(address.split(',')[0].trim());
                 }}
-                placeholder="Address, e.g. Brittas Bay, Co. Wicklow"
-                placeholderTextColor="rgba(255,255,255,0.5)"
+                onNameFound={(name) => {
+                  // A search result has a proper place name — prefer it (unless they've typed one)
+                  if (!otherNameEdited) setOtherName(name);
+                }}
               />
-              <TouchableOpacity
-                style={bulkStyles.checkboxRow}
-                onPress={() => setSaveForNextTime((prev) => !prev)}
-              >
-                <View style={[bulkStyles.checkbox, saveForNextTime && bulkStyles.checkboxChecked]}>
-                  {saveForNextTime ? <Text style={bulkStyles.checkmark}>✓</Text> : null}
-                </View>
-                <Text style={bulkStyles.checkboxLabel}>Save this location for next time</Text>
-              </TouchableOpacity>
+
+              {/* Only shown once there's a pin (dropped on the map or picked from search) */}
+              {otherPin ? (
+                <>
+                  <Text style={bulkStyles.pinAddress}>📍 {otherAddress}</Text>
+
+                  <Text style={bulkStyles.fieldLabel}>Name for extras</Text>
+                  <TextInput
+                    style={bulkStyles.input}
+                    value={otherName}
+                    onChangeText={(text) => {
+                      setOtherName(text);
+                      setOtherNameEdited(true);
+                      setFormTouched(true);
+                      if (locationError) setLocationError('');
+                    }}
+                    placeholder="e.g. Beach car park"
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                  />
+
+                  <TouchableOpacity
+                    style={bulkStyles.checkboxRow}
+                    onPress={() => setSaveForNextTime((prev) => !prev)}
+                  >
+                    <View style={[bulkStyles.checkbox, saveForNextTime && bulkStyles.checkboxChecked]}>
+                      {saveForNextTime ? <Text style={bulkStyles.checkmark}>✓</Text> : null}
+                    </View>
+                    <Text style={bulkStyles.checkboxLabel}>Save this location for next time</Text>
+                  </TouchableOpacity>
+                </>
+              ) : null}
             </>
           ) : (
             <Text style={bulkStyles.hintText}>
@@ -502,6 +554,11 @@ const bulkStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     marginBottom: 4,
     marginLeft: 4,
+  },
+  pinAddress: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: 10,
   },
     checkboxRow: {
     flexDirection: 'row',
