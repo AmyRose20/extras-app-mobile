@@ -66,3 +66,19 @@ export function combineDateAndTime(dateStr: string, timeStr: string): Date | nul
   date.setHours(hours, minutes, 0, 0);
   return date;
 }
+
+// Puts the wrap's time of day onto the call's date. If that's not after the
+// call time, it's an overnight shoot, so the wrap rolls to the next day.
+export function computeWrap(call: Date, wrapTimeOfDay: Date): Date {
+  const wrap = new Date(call);
+  wrap.setHours(wrapTimeOfDay.getHours(), wrapTimeOfDay.getMinutes(), 0, 0);
+  if (wrap <= call) {
+    wrap.setDate(wrap.getDate() + 1);
+  }
+  return wrap;
+}
+
+// True if the wrap falls on a different calendar day to the call (overnight shoot)
+export function isNextDay(call: Date | string, wrap: Date | string): boolean {
+  return new Date(call).toDateString() !== new Date(wrap).toDateString();
+}

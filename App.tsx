@@ -28,6 +28,13 @@ function AppContent(): React.JSX.Element {
   const insets = useSafeAreaInsets(); // how much space the status bar etc. take up
   const [screen, setScreen] = useState<Screen>('login');
   const [dialog, setDialog] = useState<DialogConfig | null>(null); // null = no dialog open
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Shows a short message at the bottom of any screen for 3 seconds
+  const showToast = (text: string) => {
+    setToastMessage(text);
+    setTimeout(() => setToastMessage(null), 3000);
+  }; // null = no dialog open
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -1034,17 +1041,16 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     if (screen === 'shootDayDetail') {
       return (
         <ShootDayDetailScreen
+          token={token}
           shootDay={selectedShootDay}
           loading={shootDayDetailLoading}
           message={shootDayDetailMessage}
           onBack={() => setScreen(shootDayDetailReturnTo)}
-          isEditingDate={isEditingDate}
-          onStartEditDate={handleStartEditDate}
-          onCancelEditDate={handleCancelEditDate}
-          editDateTime={editDateTime}
-          onDateTimeChange={setEditDateTime}
-          onSaveDate={handleSaveDate}
-          dateError={shootDayDateError}
+          onSaved={() => {
+            if (selectedShootDay) {
+              loadShootDayDetail(selectedShootDay.id);
+            }
+          }}
           editingCallRequestId={editingCallRequestId}
           editDescription={editDescription}
           setEditDescription={setEditDescription}
@@ -1096,7 +1102,10 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     }
 
     if (screen === 'bulkCreateShootDays') {
-      return <BulkCreateShootDaysScreen token={token} productionName={coordinatorProduction} onBack={() => setScreen('home')} />;
+      return <BulkCreateShootDaysScreen token={token} productionName={coordinatorProduction} onBack={() => setScreen('home')}           onCreated={(count) => {
+            showToast(`Created ${count} shoot ${count === 1 ? 'day' : 'days'}.`);
+            setScreen('shootDaysList');
+          }} />;
     }
 
     // Fallback — shouldn't normally be reached, but keeps TypeScript happy
@@ -1230,6 +1239,26 @@ const adminRequestDeletionForExtra = async (userId: string) => {
               : undefined
           }
         />
+        
+        {/* App-wide toast message (e.g. "Created 2 shoot days.") */}
+        {toastMessage ? (
+          <View
+            style={{
+              position: 'absolute',
+              bottom: 30,
+              left: 20,
+              right: 20,
+              backgroundColor: '#d99c4a',
+              borderRadius: 12,
+              paddingVertical: 14,
+              alignItems: 'center',
+              zIndex: 200,
+              elevation: 200,
+            }}
+          >
+            <Text style={{ color: '#1a1330', fontWeight: '700', fontSize: 15 }}>{toastMessage}</Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );

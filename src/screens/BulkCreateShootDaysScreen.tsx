@@ -4,7 +4,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { Picker } from '@react-native-picker/picker';
 import LinearGradient from 'react-native-linear-gradient';
 import { API_URL } from '../api';
-import { formatToDDMMYYYY, formatToHHMM } from '../dateUtils';
+import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
 import { Location } from '../types';
 
 const OTHER = 'OTHER'; // dropdown value for "Other (enter address)"
@@ -20,24 +20,10 @@ type Props = {
   token: string;
   productionName: string | null; // the coordinator's production, shown read-only
   onBack: () => void;
+  onCreated: (count: number) => void; // App shows a message and goes to the shoot days list
 };
 
-// Puts the wrap's time of day onto the call's date. If that's not after the
-// call time, it's an overnight shoot, so the wrap rolls to the next day.
-function computeWrap(call: Date, wrapTimeOfDay: Date): Date {
-  const wrap = new Date(call);
-  wrap.setHours(wrapTimeOfDay.getHours(), wrapTimeOfDay.getMinutes(), 0, 0);
-  if (wrap <= call) {
-    wrap.setDate(wrap.getDate() + 1);
-  }
-  return wrap;
-}
-
-function isNextDay(call: Date, wrap: Date): boolean {
-  return call.toDateString() !== wrap.toDateString();
-}
-
-function BulkCreateShootDaysScreen({ token, productionName, onBack }: Props) {
+function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }: Props) {
   // Saved meeting points for this production
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string>(OTHER);
@@ -242,11 +228,9 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack }: Props) {
         return;
       }
 
-      setCreatedCount(data.length);
-      setShowCreatedPopup(true);
-      setTimeout(() => setShowCreatedPopup(false), 3000);
       setBatchDays([]);
       resetForm();
+      onCreated(data.length); // App shows "Created N shoot days." and opens the list
     } catch (error) {
       setMessage('Something went wrong creating those shoot days.');
     } finally {
@@ -379,7 +363,7 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack }: Props) {
           )}
 
           {showDatePicker ? (
-            <DateTimePicker value={currentDateTime} mode="date" display="default" themeVariant="dark" onChange={handleDateChange} />
+            <DateTimePicker value={currentDateTime} mode="date" display="default" themeVariant="dark" minimumDate={new Date()} onChange={handleDateChange} />
           ) : null}
           {showTimePicker ? (
             <DateTimePicker value={currentDateTime} mode="time" display="default" themeVariant="dark" onChange={handleTimeChange} />
