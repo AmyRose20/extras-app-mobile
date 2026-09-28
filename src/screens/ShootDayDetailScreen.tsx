@@ -4,7 +4,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import { Picker } from '@react-native-picker/picker';
 import LinearGradient from 'react-native-linear-gradient';
 import { API_URL } from '../api';
-import { ShootDayDetail, CallRequestSummary, Location } from '../types';
+import { ShootDayDetail, ShootDaySummary, CallRequestSummary, Location } from '../types';
 import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
 
 const OTHER = 'OTHER'; // dropdown value for "Other (enter address)"
@@ -219,6 +219,84 @@ function ShootDayDetailScreen({
     }
   };
 
+  
+  // ----- Copy a call request to other shoot days -----
+  const [copyingId, setCopyingId] = useState<string | null>(null); // which call request's panel is open
+  const [copyTargets, setCopyTargets] = useState<ShootDaySummary[]>([]); // other upcoming shoot days
+  const [copySelected, setCopySelected] = useState<string[]>([]); // ticked shoot day ids
+  const [copyLoading, setCopyLoading] = useState(false);
+  const [copyError, setCopyError] = useState('');
+  const [copyNotice, setCopyNotice] = useState('');
+
+  const openCopy = async (callRequestId: string) => {
+    setCopyingId(callRequestId);
+    setCopySelected([]);
+    setCopyError('');
+    setCopyTargets([]);
+    setCopyLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/shoot-days`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        setCopyError('Could not load shoot days.');
+        return;
+      }
+      const all: ShootDaySummary[] = await response.json();
+      // Other upcoming shoot days, soonest first
+      setCopyTargets(
+        all
+          .filter((d) => !d.isPast && d.id !== shootDay?.id)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      );
+    } catch (error) {
+      setCopyError('Could not load shoot days.');
+    } finally {
+      setCopyLoading(false);
+    }
+  };
+
+  const closeCopy = () => {
+    setCopyingId(null);
+    setCopySelected([]);
+    setCopyError('');
+  };
+
+  const toggleCopyTarget = (id: string) => {
+    setCopySelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setCopyError('');
+  };
+
+  const submitCopy = async () => {
+    if (!copyingId || copySelected.length === 0) return;
+    setCopyLoading(true);
+    setCopyError('');
+    try {
+      const response = await fetch(`${API_URL}/call-requests/${copyingId}/copy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ shootDayIds: copySelected }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setCopyError(data.error || 'Could not copy that call request.');
+        return;
+      }
+
+      const days = data.copied.length;
+      const invited = data.copied.reduce((sum: number, c: { matchedCount: number }) => sum + c.matchedCount, 0);
+      setCopyNotice(
+        `Copied to ${days} shoot ${days === 1 ? 'day' : 'days'} · ${invited} ${invited === 1 ? 'extra' : 'extras'} invited.`
+      );
+      setTimeout(() => setCopyNotice(''), 4000);
+      closeCopy();
+    } catch (error) {
+      setCopyError('Something went wrong copying that call request.');
+    } finally {
+      setCopyLoading(false);
+    }
+  };
+
   return (
     <LinearGradient
       colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
@@ -416,6 +494,8 @@ function ShootDayDetailScreen({
                 ) : null}
               </View>
 
+              {copyNotice ? <Text style={detailStyles.noticeText}>{copyNotice}</Text> : null}
+
               {shootDay.callRequests.length === 0 ? (
                 <Text style={detailStyles.message}>No call requests for this shoot day yet.</Text>
               ) : null}
@@ -452,7 +532,7 @@ function ShootDayDetailScreen({
                     <Text style={detailStyles.cardTitle}>{cr.description}</Text>
                     <Text style={detailStyles.cardDetail}>Needed: {cr.quantityNeeded}</Text>
 
-                    <View style={detailStyles.linkRow}>
+                                        <View style={detailStyles.linkRow}>
                       <TouchableOpacity onPress={() => onViewResponses(cr.id)}>
                         <Text style={detailStyles.linkText}>View Responses</Text>
                       </TouchableOpacity>
@@ -461,7 +541,61 @@ function ShootDayDetailScreen({
                           <Text style={detailStyles.linkText}>Edit</Text>
                         </TouchableOpacity>
                       ) : null}
+                      <TouchableOpacity onPress={() => (copyingId === cr.id ? closeCopy() : openCopy(cr.id))}>
+                        <Text style={detailStyles.linkText}>Copy</Text>
+                      </TouchableOpacity>
                     </View>
+
+                    {/* ----- Copy panel (only for the call request being copied) ----- */}
+                    {copyingId === cr.id ? (
+                      <View style={detailStyles.copyPanel}>
+                        <Text style={detailStyles.fieldLabel}>Copy to other shoot days</Text>
+
+                        {copyLoading && copyTargets.length === 0 ? (
+                          <Text style={detailStyles.hintText}>Loading shoot days...</Text>
+                        ) : copyTargets.length === 0 ? (
+                          <Text style={detailStyles.hintText}>No other upcoming shoot days to copy to.</Text>
+                        ) : (
+                          copyTargets.map((d) => {
+                            const ticked = copySelected.includes(d.id);
+                            return (
+                              <TouchableOpacity
+                                key={d.id}
+                                style={detailStyles.checkboxRow}
+                                onPress={() => toggleCopyTarget(d.id)}
+                              >
+                                <View style={[detailStyles.checkbox, ticked && detailStyles.checkboxChecked]}>
+                                  {ticked ? <Text style={detailStyles.checkmark}>✓</Text> : null}
+                                </View>
+                                <Text style={detailStyles.checkboxLabel}>
+                                  {formatToDDMMYYYY(d.date)} {formatToHHMM(d.date)} · {d.location}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })
+                        )}
+
+                        {copyError ? <Text style={detailStyles.fieldError}>{copyError}</Text> : null}
+
+                        <View style={detailStyles.copyButtonRow}>
+                          <TouchableOpacity
+                            style={[
+                              detailStyles.copyButton,
+                              (copySelected.length === 0 || copyLoading) && { opacity: 0.5 },
+                            ]}
+                            onPress={submitCopy}
+                            disabled={copySelected.length === 0 || copyLoading}
+                          >
+                            <Text style={detailStyles.copyButtonText}>
+                              {copyLoading && copySelected.length > 0 ? 'Copying...' : `Copy (${copySelected.length})`}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={closeCopy}>
+                            <Text style={detailStyles.removeText}>Cancel</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : null}
                   </View>
                 )
               )}
@@ -687,6 +821,35 @@ const detailStyles = StyleSheet.create({
   buttonGhostText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 14,
+  },
+    noticeText: {
+    color: '#d99c4a',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  copyPanel: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  copyButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 8,
+  },
+  copyButton: {
+    backgroundColor: '#d99c4a',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+  },
+  copyButtonText: {
+    color: '#1a1330',
+    fontWeight: '700',
     fontSize: 14,
   },
   savedPopup: {
