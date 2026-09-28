@@ -1,7 +1,8 @@
-import React from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Linking, SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { DialogConfig, Invite, Tally } from '../types';
+import { formatToDDMMYYYY, formatToHHMM, isNextDay } from '../dateUtils';
 
 type Props = {
   invites: Invite[];
@@ -43,6 +44,55 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
     });
   };
 
+  
+  // Opens Google Maps with directions to the meeting point.
+  // Uses the address if there is one, otherwise the meeting point's name.
+  const openDirections = (name: string, address: string | null) => {
+    const destination = encodeURIComponent(address || name);
+    Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`);
+  };
+
+  
+  // ----- Sorting + paging -----
+  const PAGE_SIZE = 5; // invites per page
+  const [page, setPage] = useState(1);
+  const scrollRef = useRef<ScrollView>(null); // lets us scroll back to the top
+
+  // 1) Needs an answer (pending, upcoming) — soonest first
+  // 2) Booked (accepted, upcoming) — soonest first
+  // 3) History (everything else) — most recent first
+  const sortedInvites = useMemo(() => {
+    const now = new Date();
+    const time = (inv: Invite) => new Date(inv.callRequest.shootDay.date).getTime();
+    const isUpcoming = (inv: Invite) => time(inv) >= now.getTime();
+
+    const needsAnswer = invites
+      .filter((i) => i.status === 'PENDING' && !i.isExpired && isUpcoming(i))
+      .sort((a, b) => time(a) - time(b));
+    const booked = invites
+      .filter((i) => i.status === 'ACCEPTED' && isUpcoming(i))
+      .sort((a, b) => time(a) - time(b));
+    const history = invites
+      .filter((i) => !needsAnswer.includes(i) && !booked.includes(i))
+      .sort((a, b) => time(b) - time(a));
+
+    return [...needsAnswer, ...booked, ...history];
+  }, [invites]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedInvites.length / PAGE_SIZE));
+  const pageItems = sortedInvites.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Stay on the same page when the list re-sorts (e.g. after Accept),
+  // but move back if that page no longer exists.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const goToPage = (newPage: number) => {
+    setPage(newPage);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
   return (
     <LinearGradient
       colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
@@ -52,7 +102,7 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
       style={invitesStyles.container}
     >
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={invitesStyles.scrollContent}>
+        <ScrollView ref={scrollRef} contentContainerStyle={invitesStyles.scrollContent}>
           <Text style={invitesStyles.title}>My Invites</Text>
 
           {tally ? (
@@ -81,18 +131,40 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
             <Text style={invitesStyles.message}>No invites yet.</Text>
           ) : null}
 
-          {invites.map((invite) => {
+          {pageItems.map((invite) => {
             const shootDayPassed = new Date(invite.callRequest.shootDay.date) < new Date();
 
             return (
               <View key={invite.id} style={invitesStyles.card}>
                 <Text style={invitesStyles.cardTitle}>{invite.callRequest.description}</Text>
+                <Text style={invitesStyles.cardDetail}>{invite.callRequest.shootDay.production.name}</Text>
+
                 <Text style={invitesStyles.cardDetail}>
-                  {invite.callRequest.shootDay.production.name} — {invite.callRequest.shootDay.location}
+                  {formatToDDMMYYYY(invite.callRequest.shootDay.date)} · Call {formatToHHMM(invite.callRequest.shootDay.date)}
+                  {invite.callRequest.shootDay.estimatedWrapAt
+                    ? ` · Est. wrap ${formatToHHMM(invite.callRequest.shootDay.estimatedWrapAt)}${
+                        isNextDay(invite.callRequest.shootDay.date, invite.callRequest.shootDay.estimatedWrapAt)
+                          ? ' (next day)'
+                          : ''
+                      }`
+                    : ''}
                 </Text>
-                <Text style={invitesStyles.cardDetail}>
-                  {new Date(invite.callRequest.shootDay.date).toDateString()}
+                <Text style={[invitesStyles.cardDetail, { marginTop: 6 }]}>
+                  📍 {invite.callRequest.shootDay.location}
                 </Text>
+                {invite.callRequest.shootDay.locationAddress ? (
+                  <Text style={invitesStyles.addressText}>{invite.callRequest.shootDay.locationAddress}</Text>
+                ) : null}
+
+                {!shootDayPassed ? (
+                  <TouchableOpacity
+                    onPress={() =>
+                      openDirections(invite.callRequest.shootDay.location, invite.callRequest.shootDay.locationAddress)
+                    }
+                  >
+                    <Text style={invitesStyles.directionsText}>Get directions</Text>
+                  </TouchableOpacity>
+                ) : null}
                 <Text style={statusStyle(invite.status, invite.isExpired)}>
                   Status: {invite.isExpired ? 'EXPIRED' : invite.status}
                 </Text>
@@ -120,6 +192,32 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
               </View>
             );
           })}
+
+          
+          {/* Page controls — only when there's more than one page */}
+          {!loading && totalPages > 1 ? (
+            <View style={invitesStyles.pagination}>
+              <TouchableOpacity
+                style={[invitesStyles.pageButton, page === 1 && invitesStyles.pageButtonDisabled]}
+                onPress={() => goToPage(page - 1)}
+                disabled={page === 1}
+              >
+                <Text style={invitesStyles.pageButtonText}>‹ Prev</Text>
+              </TouchableOpacity>
+
+              <Text style={invitesStyles.pageLabel}>
+                Page {page} of {totalPages}
+              </Text>
+
+              <TouchableOpacity
+                style={[invitesStyles.pageButton, page === totalPages && invitesStyles.pageButtonDisabled]}
+                onPress={() => goToPage(page + 1)}
+                disabled={page === totalPages}
+              >
+                <Text style={invitesStyles.pageButtonText}>Next ›</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           {message ? <Text style={invitesStyles.message}>{message}</Text> : null}
 
@@ -196,6 +294,18 @@ const invitesStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.78)',
     marginBottom: 2,
   },
+    addressText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 2,
+  },
+  directionsText: {
+    color: '#d99c4a',
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+    marginTop: 6,
+  },
   statusPending: {
     fontSize: 12,
     fontWeight: '700',
@@ -249,6 +359,33 @@ const invitesStyles = StyleSheet.create({
     fontWeight: '600',
     textDecorationLine: 'underline',
     marginTop: 10,
+  },
+    pagination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  pageButton: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  pageButtonDisabled: {
+    opacity: 0.35,
+  },
+  pageButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  pageLabel: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 13,
+    fontWeight: '600',
   },
   buttonGhost: {
     backgroundColor: 'transparent',
