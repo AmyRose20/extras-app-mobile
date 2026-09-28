@@ -44,15 +44,21 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
     });
   };
 
-  
-  // Opens Google Maps with directions to the meeting point.
-  // Uses the address if there is one, otherwise the meeting point's name.
-  const openDirections = (name: string, address: string | null) => {
-    const destination = encodeURIComponent(address || name);
+    // Opens Google Maps with directions to the meeting point.
+  // Uses the exact map pin if there is one; otherwise the address (or name).
+  const openDirections = (
+    name: string,
+    address: string | null,
+    latitude: number | null,
+    longitude: number | null
+  ) => {
+    const destination =
+      latitude != null && longitude != null
+        ? `${latitude},${longitude}` // exact pin
+        : encodeURIComponent(address || name);
     Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`);
   };
-
-  
+ 
   // ----- Sorting + paging -----
   const PAGE_SIZE = 5; // invites per page
   const [page, setPage] = useState(1);
@@ -159,7 +165,12 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
                 {!shootDayPassed ? (
                   <TouchableOpacity
                     onPress={() =>
-                      openDirections(invite.callRequest.shootDay.location, invite.callRequest.shootDay.locationAddress)
+                      openDirections(
+                        invite.callRequest.shootDay.location,
+                        invite.callRequest.shootDay.locationAddress,
+                        invite.callRequest.shootDay.latitude,
+                        invite.callRequest.shootDay.longitude
+                      )
                     }
                   >
                     <Text style={invitesStyles.directionsText}>Get directions</Text>
