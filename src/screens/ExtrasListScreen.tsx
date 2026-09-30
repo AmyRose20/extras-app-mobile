@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import LinearGradient from 'react-native-linear-gradient';
-import { SKILL_OPTIONS, AVAILABILITY_OPTIONS } from '../constants';
+import { SKILL_GROUPS, AVAILABILITY_OPTIONS } from '../constants';
 import { ExtraSummary } from '../types';
 
 type Props = {
@@ -70,80 +70,96 @@ function ExtrasListScreen({
           <Text style={extrasListStyles.title}>Extra Profiles</Text>
 
           <Text style={extrasListStyles.fieldLabel}>Filter by</Text>
-          <View style={extrasListStyles.pickerWrapper}>
-            <Picker
-              selectedValue={activeFilterType}
-              onValueChange={(value) => setActiveFilterType(value)}
-              style={extrasListStyles.picker}
-              dropdownIconColor="#fff"
-            >
-              <Picker.Item label="Skill" value="skill" color="#1a1330" />
-              <Picker.Item label="Gender" value="gender" color="#1a1330" />
-              <Picker.Item label="Availability" value="availability" color="#1a1330" />
-              <Picker.Item label="Age range" value="age" color="#1a1330" />
-            </Picker>
+          <View style={extrasListStyles.filterRow}>
+            {/* Left dropdown: which kind of filter */}
+            <View style={[extrasListStyles.pickerWrapper, extrasListStyles.filterHalf]}>
+              <Picker
+                selectedValue={activeFilterType}
+                onValueChange={(value) => setActiveFilterType(value)}
+                style={extrasListStyles.picker}
+                dropdownIconColor="#fff"
+              >
+                <Picker.Item label="Skill" value="skill" color="#1a1330" />
+                <Picker.Item label="Gender" value="gender" color="#1a1330" />
+                <Picker.Item label="Availability" value="availability" color="#1a1330" />
+                <Picker.Item label="Age range" value="age" color="#1a1330" />
+              </Picker>
+            </View>
+
+            {/* Right dropdown: the value (hidden for age, which uses boxes below) */}
+            {activeFilterType !== 'age' && activeFilterType !== 'gender' && (
+              <View style={[extrasListStyles.pickerWrapper, extrasListStyles.filterHalf]}>
+                {activeFilterType === 'skill' && (
+                  <Picker
+                    selectedValue={skillFilter[0] ?? ''}
+                    onValueChange={(value) => {
+                      // Group headings can't be picked
+                      if (value.startsWith('heading:')) return;
+                      // One skill at a time: clear, then add the new one
+                      onClearSkillFilter();
+                      if (value !== '') onSelectSkillFilter(value);
+                    }}
+                    style={extrasListStyles.picker}
+                    dropdownIconColor="#fff"
+                  >
+                    <Picker.Item label="All" value="" color="#1a1330" />
+                    {SKILL_GROUPS.flatMap((group) => [
+                      <Picker.Item
+                        key={`heading:${group.title}`}
+                        label={group.title.toUpperCase()}
+                        value={`heading:${group.title}`}
+                        color="#8a7fa8"
+                        enabled={false}
+                      />,
+                      ...group.options.map((skill) => (
+                        <Picker.Item key={skill} label={skill} value={skill} color="#1a1330" />
+                      )),
+                    ])}
+                  </Picker>
+                )}
+
+                {activeFilterType === 'availability' && (
+                  <Picker
+                    selectedValue={availabilityFilter[0] ?? ''}
+                    onValueChange={(value) => {
+                      onClearAvailabilityFilter();
+                      if (value !== '') onSelectAvailabilityFilter(value);
+                    }}
+                    style={extrasListStyles.picker}
+                    dropdownIconColor="#fff"
+                  >
+                    <Picker.Item label="All" value="" color="#1a1330" />
+                    {AVAILABILITY_OPTIONS.map((day) => (
+                      <Picker.Item key={day} label={day} value={day} color="#1a1330" />
+                    ))}
+                  </Picker>
+                )}
+
+              </View>
+            )}
           </View>
 
-          {activeFilterType === 'skill' && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {activeFilterType === 'gender' && (
+            <>
               <View style={extrasListStyles.chipsContainer}>
-                <TouchableOpacity
-                  style={[extrasListStyles.chip, skillFilter.length === 0 && extrasListStyles.chipSelected]}
-                  onPress={onClearSkillFilter}
-                >
-                  <Text style={[extrasListStyles.chipText, skillFilter.length === 0 && extrasListStyles.chipTextSelected]}>All</Text>
-                </TouchableOpacity>
-
-                {SKILL_OPTIONS.map((skill) => (
-                  <TouchableOpacity
-                    key={skill}
-                    style={[extrasListStyles.chip, skillFilter.includes(skill) && extrasListStyles.chipSelected]}
-                    onPress={() => onSelectSkillFilter(skill)}
-                  >
-                    <Text style={[extrasListStyles.chipText, skillFilter.includes(skill) && extrasListStyles.chipTextSelected]}>{skill}</Text>
-                  </TouchableOpacity>
-                ))}
+                {['MALE', 'FEMALE'].map((option) => {
+                  const selected = genderFilter === option;
+                  return (
+                    <TouchableOpacity
+                      key={option}
+                      style={[extrasListStyles.chip, selected && extrasListStyles.chipSelected]}
+                      // Tap again to unselect (back to everyone)
+                      onPress={() => onSelectGenderFilter(selected ? '' : option)}
+                    >
+                      <Text style={[extrasListStyles.chipText, selected && extrasListStyles.chipTextSelected]}>
+                        {option === 'MALE' ? 'Male' : 'Female'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
-            </ScrollView>
-          )}
-
-          {activeFilterType === 'gender' && (
-            <View style={extrasListStyles.chipsContainer}>
-              {['', 'MALE', 'FEMALE'].map((option) => (
-                <TouchableOpacity
-                  key={option || 'all'}
-                  style={[extrasListStyles.chip, genderFilter === option && extrasListStyles.chipSelected]}
-                  onPress={() => onSelectGenderFilter(option)}
-                >
-                  <Text style={[extrasListStyles.chipText, genderFilter === option && extrasListStyles.chipTextSelected]}>
-                    {option === '' ? 'All' : option === 'MALE' ? 'Male' : 'Female'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-          {activeFilterType === 'availability' && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={extrasListStyles.chipsContainer}>
-                <TouchableOpacity
-                  style={[extrasListStyles.chip, availabilityFilter.length === 0 && extrasListStyles.chipSelected]}
-                  onPress={onClearAvailabilityFilter}
-                >
-                  <Text style={[extrasListStyles.chipText, availabilityFilter.length === 0 && extrasListStyles.chipTextSelected]}>All</Text>
-                </TouchableOpacity>
-
-                {AVAILABILITY_OPTIONS.map((day) => (
-                  <TouchableOpacity
-                    key={day}
-                    style={[extrasListStyles.chip, availabilityFilter.includes(day) && extrasListStyles.chipSelected]}
-                    onPress={() => onSelectAvailabilityFilter(day)}
-                  >
-                    <Text style={[extrasListStyles.chipText, availabilityFilter.includes(day) && extrasListStyles.chipTextSelected]}>{day}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
+              <Text style={extrasListStyles.hint}>Leave unselected to include everyone</Text>
+            </>
           )}
 
           {activeFilterType === 'age' && (
@@ -248,10 +264,16 @@ const extrasListStyles = StyleSheet.create({
   picker: {
     color: '#fff',
   },
-  chipsContainer: {
+  filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 16,
+    gap: 12,
+  },
+  filterHalf: {
+    flex: 1,
+  },
+    chipsContainer: {
+    flexDirection: 'row',
+    marginBottom: 6,
   },
   chip: {
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -259,9 +281,8 @@ const extrasListStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.25)',
     borderRadius: 20,
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 18,
     marginRight: 8,
-    marginBottom: 8,
   },
   chipSelected: {
     backgroundColor: '#d99c4a',
@@ -274,6 +295,11 @@ const extrasListStyles = StyleSheet.create({
   },
   chipTextSelected: {
     color: '#1a1330',
+  },
+  hint: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: 16,
   },
   row: {
     flexDirection: 'row',

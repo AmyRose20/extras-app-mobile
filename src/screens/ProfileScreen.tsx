@@ -5,8 +5,9 @@ import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, Image, Vie
 import LinearGradient from 'react-native-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
 import { styles } from '../styles';
-import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from '../constants';
+import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS, SKILL_GROUPS, LANGUAGE_GROUPS } from '../constants';
 import ChipMultiSelect from '../components/ChipMultiSelect';
+import GroupedMultiSelect from '../components/GroupedMultiSelect';
 import { MaskedBankDetails } from '../types';
 
 type Props = {
@@ -267,17 +268,17 @@ function ProfileScreen({
 
                 {/* Skills, languages, availability */}
                 <View style={profileStyles.card}>
-                  <ChipMultiSelect
+                  <GroupedMultiSelect
                     label="Skills"
-                    options={SKILL_OPTIONS}
+                    groups={SKILL_GROUPS}
                     selected={skills}
                     onToggle={onToggleSkill}
                     otherText={otherSkills}
                     onOtherTextChange={setOtherSkills}
                   />
-                  <ChipMultiSelect
+                  <GroupedMultiSelect
                     label="Languages"
-                    options={LANGUAGE_OPTIONS}
+                    groups={LANGUAGE_GROUPS}
                     selected={languages}
                     onToggle={onToggleLanguage}
                     otherText={otherLanguages}

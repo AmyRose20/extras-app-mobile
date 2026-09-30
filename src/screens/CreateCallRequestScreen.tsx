@@ -4,9 +4,9 @@ import { Picker } from '@react-native-picker/picker';
 import LinearGradient from 'react-native-linear-gradient';
 import { API_URL } from '../api';
 import { ShootDaySummary } from '../types';
-import { SKILL_OPTIONS } from '../constants';
+import { SKILL_GROUPS } from '../constants';
 import { formatToDDMMYYYY, formatToHHMM } from '../dateUtils';
-import ChipMultiSelect from '../components/ChipMultiSelect';
+import GroupedMultiSelect from '../components/GroupedMultiSelect';
 
 type Props = {
   token: string;
@@ -273,9 +273,9 @@ function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }
               Leave unselected to include everyone.
             </Text>
 
-            <ChipMultiSelect
+            <GroupedMultiSelect
               label="Skills (optional)"
-              options={SKILL_OPTIONS}
+              groups={SKILL_GROUPS}
               selected={skills}
               onToggle={toggleSkill}
               otherText={otherSkills}
