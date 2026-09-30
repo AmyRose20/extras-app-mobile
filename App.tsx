@@ -14,7 +14,7 @@ import ExtraProfileDetailScreen from './src/screens/ExtraProfileDetailScreen';
 import ShootDaysListScreen from './src/screens/ShootDaysListScreen';
 import ShootDayDetailScreen from './src/screens/ShootDayDetailScreen';
 import { getAuth, signInWithCustomToken, signOut } from '@react-native-firebase/auth';
-import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from './src/constants';
+import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_GROUPS } from './src/constants';
 import InviteListScreen from './src/screens/InviteListScreen';
 import BulkCreateShootDaysScreen from './src/screens/BulkCreateShootDaysScreen';
 import HeaderMenu, { MenuItem } from './src/components/HeaderMenu';
@@ -224,8 +224,8 @@ function AppContent(): React.JSX.Element {
       setPhoneNumber(data.phoneNumber ?? '');
       setContactEmail(data.contactEmail || email);
       const fetchedAvailability: string[] = data.availability ?? [];
-      setAvailability(fetchedAvailability.filter((a) => AVAILABILITY_OPTIONS.includes(a)));
-      setOtherAvailability(fetchedAvailability.filter((a) => !AVAILABILITY_OPTIONS.includes(a)).join(', '));
+      setAvailability(fetchedAvailability.filter((a) => AVAILABILITY_GROUPS.some((group) => group.options.includes(a))));
+      setOtherAvailability(fetchedAvailability.filter((a) => !AVAILABILITY_GROUPS.some((group) => group.options.includes(a))).join(', '));
       setFacePhotoUrl(data.facePhotoUrl ?? '');
       setFullBodyPhotoUrl(data.fullBodyPhotoUrl ?? '');
       setPendingFacePhoto(null);
@@ -251,6 +251,7 @@ function AppContent(): React.JSX.Element {
         setProductionsError('Could not load productions.');
       }
     } catch (error) {
+      console.error('loadProfile failed:', error);
       setProfileMessage('Something went wrong loading your profile.');
     } finally {
       setProfileLoading(false);
@@ -843,8 +844,18 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     setLanguages((prev) => (prev.includes(language) ? prev.filter((l) => l !== language) : [...prev, language]));
   };
 
+  // "Everyday" can't be combined with specific days:
+  // ticking Everyday clears the weekdays, ticking a weekday clears Everyday.
   const toggleAvailability = (day: string) => {
-  setAvailability((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+    setAvailability((prev) => {
+      if (prev.includes(day)) {
+        return prev.filter((d) => d !== day); // untick
+      }
+      if (day === 'Everyday') {
+        return ['Everyday'];
+      }
+      return [...prev.filter((d) => d !== 'Everyday'), day];
+    });
   };
 
   useEffect(() => {

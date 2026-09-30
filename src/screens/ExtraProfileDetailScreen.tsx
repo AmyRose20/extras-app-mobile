@@ -119,11 +119,11 @@ function ExtraProfileDetailScreen({ token, profile, loading, message, onBack, ta
                 <View style={detailStyles.photoRow}>
                   <View>
                     <Text style={detailStyles.fieldLabel}>Face photo</Text>
-                    <PhotoPreview uri={profile.facePhotoUrl} width={140} height={140} />
+                    <PhotoPreview uri={profile.facePhotoUrl} width={140} height={210} />
                   </View>
                   <View>
                     <Text style={detailStyles.fieldLabel}>Full-body photo</Text>
-                    <PhotoPreview uri={profile.fullBodyPhotoUrl} width={140} height={140} />
+                    <PhotoPreview uri={profile.fullBodyPhotoUrl} width={140} height={210} />
                   </View>
                 </View>
 

@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import LinearGradient from 'react-native-linear-gradient';
 import { SKILL_GROUPS, AVAILABILITY_OPTIONS } from '../constants';
 import { ExtraSummary } from '../types';
+
+const PAGE_SIZE = 10;
 
 type Props = {
   extras: ExtraSummary[];
@@ -50,6 +52,27 @@ function ExtrasListScreen({
 }: Props) {
   const [activeFilterType, setActiveFilterType] = useState('skill');
 
+  // ----- Pagination: 10 extras per page -----
+  const [page, setPage] = useState(1);
+  const scrollRef = useRef<ScrollView>(null);
+  const totalPages = Math.max(1, Math.ceil(extras.length / PAGE_SIZE));
+  const pageExtras = useMemo(
+    () => extras.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [extras, page],
+  );
+  const firstShown = (page - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(page * PAGE_SIZE, extras.length);
+
+  // A new list (e.g. after changing a filter) starts back on page 1
+  useEffect(() => {
+    setPage(1);
+  }, [extras]);
+
+  const goToPage = (newPage: number) => {
+    setPage(newPage);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
   const activeFilterSummaries = [
     skillFilter.length > 0 ? `Skill: ${skillFilter.join(', ')}` : null,
     genderFilter ? `Gender: ${genderFilter === 'MALE' ? 'Male' : 'Female'}` : null,
@@ -66,7 +89,7 @@ function ExtrasListScreen({
       style={extrasListStyles.container}
     >
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={extrasListStyles.scrollContent}>
+        <ScrollView ref={scrollRef} contentContainerStyle={extrasListStyles.scrollContent}>
           <Text style={extrasListStyles.title}>Extra Profiles</Text>
 
           <Text style={extrasListStyles.fieldLabel}>Filter by</Text>
@@ -86,7 +109,7 @@ function ExtrasListScreen({
               </Picker>
             </View>
 
-            {/* Right dropdown: the value (hidden for age, which uses boxes below) */}
+            {/* Right dropdown: the value (not used for gender or age) */}
             {activeFilterType !== 'age' && activeFilterType !== 'gender' && (
               <View style={[extrasListStyles.pickerWrapper, extrasListStyles.filterHalf]}>
                 {activeFilterType === 'skill' && (
@@ -134,12 +157,11 @@ function ExtrasListScreen({
                     ))}
                   </Picker>
                 )}
-
               </View>
             )}
           </View>
 
-                    {activeFilterType === 'gender' && (
+          {activeFilterType === 'gender' && (
             <>
               <View style={extrasListStyles.chipsContainer}>
                 {['MALE', 'FEMALE'].map((option) => {
@@ -205,7 +227,11 @@ function ExtrasListScreen({
             <Text style={extrasListStyles.message}>No extras found.</Text>
           ) : (
             <View style={extrasListStyles.resultsSpacing}>
-              {extras.map((extra) => (
+              <Text style={extrasListStyles.resultCount}>
+                Showing {firstShown}–{lastShown} of {extras.length}
+              </Text>
+
+              {pageExtras.map((extra) => (
                 <TouchableOpacity key={extra.id} style={extrasListStyles.card} onPress={() => onSelectExtra(extra.id)}>
                   <Text style={extrasListStyles.cardTitle}>{extra.name}</Text>
                   <Text style={extrasListStyles.cardDetail}>
@@ -216,6 +242,28 @@ function ExtrasListScreen({
                   </Text>
                 </TouchableOpacity>
               ))}
+
+              {totalPages > 1 && (
+                <View style={extrasListStyles.pager}>
+                  <TouchableOpacity
+                    style={[extrasListStyles.pagerButton, page === 1 && extrasListStyles.pagerButtonDisabled]}
+                    onPress={() => goToPage(page - 1)}
+                    disabled={page === 1}
+                  >
+                    <Text style={extrasListStyles.pagerButtonText}>‹ Prev</Text>
+                  </TouchableOpacity>
+                  <Text style={extrasListStyles.pagerText}>
+                    Page {page} of {totalPages}
+                  </Text>
+                  <TouchableOpacity
+                    style={[extrasListStyles.pagerButton, page === totalPages && extrasListStyles.pagerButtonDisabled]}
+                    onPress={() => goToPage(page + 1)}
+                    disabled={page === totalPages}
+                  >
+                    <Text style={extrasListStyles.pagerButtonText}>Next ›</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
 
@@ -271,7 +319,7 @@ const extrasListStyles = StyleSheet.create({
   filterHalf: {
     flex: 1,
   },
-    chipsContainer: {
+  chipsContainer: {
     flexDirection: 'row',
     marginBottom: 6,
   },
@@ -329,6 +377,11 @@ const extrasListStyles = StyleSheet.create({
   resultsSpacing: {
     marginTop: 4,
   },
+  resultCount: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.65)',
+    marginBottom: 10,
+  },
   card: {
     backgroundColor: 'rgba(12,10,22,0.55)',
     borderRadius: 14,
@@ -347,6 +400,31 @@ const extrasListStyles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255,255,255,0.78)',
     marginBottom: 2,
+  },
+  pager: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  pagerButton: {
+    borderWidth: 1,
+    borderColor: '#d99c4a',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+  },
+  pagerButtonDisabled: {
+    opacity: 0.35,
+  },
+  pagerButtonText: {
+    color: '#d99c4a',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  pagerText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
   },
   button: {
     backgroundColor: '#d99c4a',

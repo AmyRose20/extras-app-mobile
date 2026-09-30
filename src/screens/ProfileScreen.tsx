@@ -5,7 +5,7 @@ import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, Image, Vie
 import LinearGradient from 'react-native-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
 import { styles } from '../styles';
-import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS, SKILL_GROUPS, LANGUAGE_GROUPS } from '../constants';
+import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_GROUPS, SKILL_GROUPS, LANGUAGE_GROUPS } from '../constants';
 import ChipMultiSelect from '../components/ChipMultiSelect';
 import GroupedMultiSelect from '../components/GroupedMultiSelect';
 import { MaskedBankDetails } from '../types';
@@ -210,17 +210,22 @@ function ProfileScreen({
                   </View>
 
                   <Text style={profileStyles.inputLabel}>Gender</Text>
-                  <View style={profileStyles.pickerWrapper}>
-                    <Picker
-                      selectedValue={gender}
-                      onValueChange={(value) => setGender(value)}
-                      style={profileStyles.picker}
-                      dropdownIconColor="#fff"
-                    >
-                      <Picker.Item label="Select gender..." value="" color="#1a1330" />
-                      <Picker.Item label="Male" value="MALE" color="#1a1330" />
-                      <Picker.Item label="Female" value="FEMALE" color="#1a1330" />
-                    </Picker>
+                  <View style={profileStyles.chipRow}>
+                    {['MALE', 'FEMALE'].map((option) => {
+                      const selected = gender === option;
+                      return (
+                        <TouchableOpacity
+                          key={option}
+                          style={[profileStyles.chip, selected && profileStyles.chipSelected]}
+                          // Tap again to unselect
+                          onPress={() => setGender(selected ? '' : option)}
+                        >
+                          <Text style={[profileStyles.chipText, selected && profileStyles.chipTextSelected]}>
+                            {option === 'MALE' ? 'Male' : 'Female'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
 
                   <Text style={profileStyles.inputLabel}>Date of birth</Text>
@@ -284,13 +289,11 @@ function ProfileScreen({
                     otherText={otherLanguages}
                     onOtherTextChange={setOtherLanguages}
                   />
-                  <ChipMultiSelect
+                  <GroupedMultiSelect
                     label="Availability"
-                    options={AVAILABILITY_OPTIONS}
+                    groups={AVAILABILITY_GROUPS}
                     selected={availability}
                     onToggle={onToggleAvailability}
-                    otherText={otherAvailability}
-                    onOtherTextChange={setOtherAvailability}
                   />
                 </View>
 
@@ -300,14 +303,14 @@ function ProfileScreen({
                   <View style={{ flexDirection: 'row', gap: 16 }}>
                     <View>
                       <Text style={profileStyles.label}>Face photo</Text>
-                      <PhotoPreview uri={pendingFacePhoto || facePhotoUrl || null} width={140} height={140} dark />
+                      <PhotoPreview uri={pendingFacePhoto || facePhotoUrl || null} width={140} height={210} dark />
                       <TouchableOpacity style={profileStyles.smallButton} onPress={onPickFacePhoto}>
                         <Text style={profileStyles.smallButtonText}>Choose photo</Text>
                       </TouchableOpacity>
                     </View>
                     <View>
                       <Text style={profileStyles.label}>Full-body photo</Text>
-                      <PhotoPreview uri={pendingFullBodyPhoto || fullBodyPhotoUrl || null} width={140} height={140} dark />
+                      <PhotoPreview uri={pendingFullBodyPhoto || fullBodyPhotoUrl || null} width={140} height={210} dark />
                       <TouchableOpacity style={profileStyles.smallButton} onPress={onPickFullBodyPhoto}>
                         <Text style={profileStyles.smallButtonText}>Choose photo</Text>
                       </TouchableOpacity>
@@ -519,11 +522,11 @@ function ProfileScreen({
             <View style={{ flexDirection: 'row', gap: 16 }}>
               <View>
                 <Text style={profileStyles.label}>Face photo</Text>
-                <PhotoPreview uri={facePhotoUrl || null} width={140} height={140} dark />
+                <PhotoPreview uri={facePhotoUrl || null} width={140} height={210} dark />
               </View>
               <View>
                 <Text style={profileStyles.label}>Full-body photo</Text>
-                <PhotoPreview uri={fullBodyPhotoUrl || null} width={140} height={140} dark />
+                <PhotoPreview uri={fullBodyPhotoUrl || null} width={140} height={210} dark />
               </View>
             </View>
           </View>

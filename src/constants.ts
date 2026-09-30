@@ -3,7 +3,7 @@
 export const SKILL_GROUPS: { title: string; options: string[] }[] = [
   {
     title: 'Stunts & action',
-    options: ['Stunt work', 'Martial arts', 'Boxing', 'Firearms (licensed)'],
+    options: ['Stunt work', 'Martial arts', 'Boxing', 'Firearms (licensed)', 'Archery'],
   },
   {
     title: 'Performance',
@@ -40,4 +40,10 @@ export const AVAILABILITY_OPTIONS = [
   'Wednesdays',
   'Thursdays',
   'Fridays',
+];
+
+// Availability, grouped for the picker (uses the same names as AVAILABILITY_OPTIONS)
+export const AVAILABILITY_GROUPS: { title: string; options: string[] }[] = [
+  { title: 'Any day', options: ['Everyday'] },
+  { title: 'Specific weekdays', options: ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays'] },
 ];
