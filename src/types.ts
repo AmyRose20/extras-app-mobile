@@ -99,6 +99,8 @@ export type ExtraProfileDetail = {
   name: string;
   age: number | null;
   dateOfBirth: string | null; // e.g. "1997-03-14T00:00:00.000Z"; age above is worked out from this
+  hasSmartphone: boolean;
+  hasBankDetails: boolean; // the details themselves come from a separate "Show bank details" request
   gender: string | null;
   heightCm: number | null;
   skills: string[];
@@ -110,6 +112,19 @@ export type ExtraProfileDetail = {
   fullBodyPhotoUrl: string | null;
   deletionRequestStatus: string;
   productions: Production[];
+};
+
+// Full bank details, only returned when a coordinator taps "Show bank details"
+// (matches GET /profiles/:id/bank-details)
+export type BankDetails = {
+  iban: string; // e.g. "IE29 AIBK 9311 5212 3456 78"
+  bic: string;
+};
+
+// What an extra sees of their own bank details (never the full IBAN)
+export type MaskedBankDetails = {
+  ibanMasked: string; // e.g. "IE•• •••• •••• 5678"
+  bic: string;
 };
 
 // One row in the admin's pending-deletion-requests list (matches GET /deletion-requests)

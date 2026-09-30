@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, Text, TouchableOpacity, Image, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { ExtraProfileDetail, Tally } from '../types';
+import { API_URL } from '../api';
+import { ExtraProfileDetail, Tally, BankDetails } from '../types';
 
 function PhotoPreview({ uri, width, height }: { uri: string | null; width: number; height: number }) {
   if (uri) {
@@ -15,6 +16,7 @@ function PhotoPreview({ uri, width, height }: { uri: string | null; width: numbe
 }
 
 type Props = {
+  token: string;
   profile: ExtraProfileDetail | null;
   loading: boolean;
   message: string;
@@ -24,7 +26,38 @@ type Props = {
 
 // Admin's view of one extra. Actions (remove from production, request
 // deletion) live in the hamburger menu, set up in App.tsx.
-function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally }: Props) {
+function ExtraProfileDetailScreen({ token, profile, loading, message, onBack, tally }: Props) {
+    // Bank details are only fetched when the coordinator taps "Show bank details"
+  const [bank, setBank] = useState<BankDetails | null>(null);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [bankError, setBankError] = useState('');
+
+  // Hide them again whenever a different extra is opened
+  useEffect(() => {
+    setBank(null);
+    setBankError('');
+  }, [profile?.id]);
+
+  const showBankDetails = async () => {
+    if (!profile) return;
+    setBankLoading(true);
+    setBankError('');
+    try {
+      const response = await fetch(`${API_URL}/profiles/${profile.id}/bank-details`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setBankError(data.error || 'Could not load bank details.');
+        return;
+      }
+      setBank(data);
+    } catch (error) {
+      setBankError('Could not load bank details.');
+    } finally {
+      setBankLoading(false);
+    }
+  };
   return (
     <LinearGradient
       colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
@@ -128,6 +161,46 @@ function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally }: 
                   ) : null}
                 </View>
               ) : null}
+              
+              {/* Smartphone + bank details */}
+              <View style={detailStyles.card}>
+                <Text style={detailStyles.widgetTitle}>Smartphone & Payment</Text>
+
+                <Text style={detailStyles.detailRow}>
+                  <Text style={detailStyles.fieldLabelInline}>Smartphone: </Text>
+                  {profile.hasSmartphone ? 'Yes' : 'No'}
+                </Text>
+
+                <Text style={[detailStyles.fieldLabelInline, { marginBottom: 6 }]}>Bank details</Text>
+                {!profile.hasBankDetails ? (
+                  <Text style={detailStyles.detailRow}>Not added yet</Text>
+                ) : bank ? (
+                  <>
+                    <Text style={detailStyles.detailRow}>
+                      <Text style={detailStyles.fieldLabelInline}>IBAN: </Text>
+                      {bank.iban}
+                    </Text>
+                    <Text style={detailStyles.detailRow}>
+                      <Text style={detailStyles.fieldLabelInline}>BIC: </Text>
+                      {bank.bic}
+                    </Text>
+                    <TouchableOpacity onPress={() => setBank(null)}>
+                      <Text style={detailStyles.linkText}>Hide</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={[detailStyles.revealButton, bankLoading && { opacity: 0.6 }]}
+                    onPress={showBankDetails}
+                    disabled={bankLoading}
+                  >
+                    <Text style={detailStyles.revealButtonText}>
+                      {bankLoading ? 'Loading...' : 'Show bank details'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {bankError ? <Text style={detailStyles.errorMessage}>{bankError}</Text> : null}
+              </View>
             </>
           ) : (
             <Text style={detailStyles.message}>Profile not found.</Text>
@@ -266,6 +339,25 @@ const detailStyles = StyleSheet.create({
     color: '#ff9d9d',
     textAlign: 'center',
     marginTop: 12,
+  },
+    revealButton: {
+    borderWidth: 1,
+    borderColor: '#d99c4a',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
+  },
+  revealButtonText: {
+    color: '#d99c4a',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  linkText: {
+    color: '#d99c4a',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
   },
   buttonGhost: {
     backgroundColor: 'transparent',

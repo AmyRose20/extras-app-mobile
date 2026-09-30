@@ -7,6 +7,7 @@ import { Picker } from '@react-native-picker/picker';
 import { styles } from '../styles';
 import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_OPTIONS } from '../constants';
 import ChipMultiSelect from '../components/ChipMultiSelect';
+import { MaskedBankDetails } from '../types';
 
 type Props = {
   name: string;
@@ -53,6 +54,18 @@ type Props = {
   myProductionNames: string[];
   onToggleProduction: (name: string) => void;
   productionsError: string;
+  hasSmartphone: boolean;
+  setHasSmartphone: (value: boolean) => void;
+  bankDetails: MaskedBankDetails | null; // saved details (masked), or null
+  editingBank: boolean;
+  setEditingBank: (value: boolean) => void;
+  removeBank: boolean;
+  setRemoveBank: (value: boolean) => void;
+  ibanInput: string;
+  setIbanInput: (value: string) => void;
+  bicInput: string;
+  setBicInput: (value: string) => void;
+  bankError: string;
 };
 
 function PhotoPreview({
@@ -130,6 +143,18 @@ function ProfileScreen({
   myProductionNames,
   onToggleProduction,
   productionsError,
+  hasSmartphone,
+  setHasSmartphone,
+  bankDetails,
+  editingBank,
+  setEditingBank,
+  removeBank,
+  setRemoveBank,
+  ibanInput,
+  setIbanInput,
+  bicInput,
+  setBicInput,
+  bankError,
 }: Props) {
   const [showDobPicker, setShowDobPicker] = useState(false);
   const age = ageFromDob(dateOfBirth); // worked out live, so it updates as soon as a date is picked
@@ -316,6 +341,91 @@ function ProfileScreen({
                   <Text style={profileStyles.fieldError}>{contactError || ' '}</Text>
                 </View>
 
+                {/* Smartphone + bank details */}
+                <View style={profileStyles.card}>
+                  <Text style={profileStyles.cardTitle}>Smartphone & Payment</Text>
+
+                  <Text style={profileStyles.inputLabel}>Do you have a smartphone?</Text>
+                  <View style={profileStyles.chipRow}>
+                    {[
+                      { label: 'Yes', value: true },
+                      { label: 'No', value: false },
+                    ].map((option) => {
+                      const selected = hasSmartphone === option.value;
+                      return (
+                        <TouchableOpacity
+                          key={option.label}
+                          style={[profileStyles.chip, selected && profileStyles.chipSelected]}
+                          onPress={() => setHasSmartphone(option.value)}
+                        >
+                          <Text style={[profileStyles.chipText, selected && profileStyles.chipTextSelected]}>
+                            {option.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <Text style={profileStyles.inputLabel}>Bank details (for payment)</Text>
+                  {editingBank ? (
+                    <>
+                      <TextInput
+                        style={profileStyles.input}
+                        placeholder="IBAN, e.g. IE29 AIBK 9311 5212 3456 78"
+                        placeholderTextColor="rgba(255,255,255,0.5)"
+                        value={ibanInput}
+                        onChangeText={setIbanInput}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                      />
+                      <TextInput
+                        style={profileStyles.input}
+                        placeholder="BIC, e.g. AIBKIE2D"
+                        placeholderTextColor="rgba(255,255,255,0.5)"
+                        value={bicInput}
+                        onChangeText={setBicInput}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                      />
+                      <TouchableOpacity
+                        onPress={() => {
+                          setEditingBank(false);
+                          setIbanInput('');
+                          setBicInput('');
+                        }}
+                      >
+                        <Text style={profileStyles.linkText}>Cancel bank changes</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : removeBank ? (
+                    <>
+                      <Text style={profileStyles.value}>Your bank details will be removed when you save.</Text>
+                      <TouchableOpacity onPress={() => setRemoveBank(false)}>
+                        <Text style={profileStyles.linkText}>Undo</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : bankDetails ? (
+                    <>
+                      <Text style={profileStyles.value}>
+                        {bankDetails.ibanMasked} · {bankDetails.bic}
+                      </Text>
+                      <View style={profileStyles.linkRow}>
+                        <TouchableOpacity onPress={() => setEditingBank(true)}>
+                          <Text style={profileStyles.linkText}>Change</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setRemoveBank(true)}>
+                          <Text style={profileStyles.removeLinkText}>Remove</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <TouchableOpacity onPress={() => setEditingBank(true)}>
+                      <Text style={profileStyles.linkText}>+ Add bank details</Text>
+                    </TouchableOpacity>
+                  )}
+                  <Text style={profileStyles.fieldError}>{bankError || ' '}</Text>
+                </View>
+
                 {message ? <Text style={profileStyles.messageText}>{message}</Text> : null}
 
                 <TouchableOpacity
@@ -426,6 +536,20 @@ function ProfileScreen({
             <View style={[profileStyles.field, { marginBottom: 0 }]}>
               <Text style={profileStyles.label}>Email</Text>
               <Text style={profileStyles.value}>{contactEmail || 'Not set'}</Text>
+            </View>
+          </View>
+          
+          <View style={profileStyles.card}>
+            <Text style={profileStyles.cardTitle}>Smartphone & Payment</Text>
+            <View style={profileStyles.field}>
+              <Text style={profileStyles.label}>Smartphone</Text>
+              <Text style={profileStyles.value}>{hasSmartphone ? 'Yes' : 'No'}</Text>
+            </View>
+            <View style={[profileStyles.field, { marginBottom: 0 }]}>
+              <Text style={profileStyles.label}>Bank details</Text>
+              <Text style={profileStyles.value}>
+                {bankDetails ? `${bankDetails.ibanMasked} · ${bankDetails.bic}` : 'Not added'}
+              </Text>
             </View>
           </View>
 
@@ -610,6 +734,48 @@ const profileStyles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 13,
+  },
+    chipRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  chip: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    marginRight: 8,
+  },
+  chipSelected: {
+    backgroundColor: '#d99c4a',
+    borderColor: '#d99c4a',
+  },
+  chipText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  chipTextSelected: {
+    color: '#1a1330',
+  },
+  linkRow: {
+    flexDirection: 'row',
+    gap: 18,
+    marginTop: 6,
+  },
+  linkText: {
+    color: '#d99c4a',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  removeLinkText: {
+    color: '#ff9d9d',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 6,
   },
   savedPopup: {
     position: 'absolute',

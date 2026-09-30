@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Screen, Role, Invite, Production, DialogConfig, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary, DeletionRequestSummary } from './src/types';
+import { Screen, Role, Invite, Production, DialogConfig, MaskedBankDetails, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary, DeletionRequestSummary } from './src/types';
 import { API_URL } from './src/api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { getStorage, ref, putFile, getDownloadURL } from '@react-native-firebase/storage';
@@ -66,6 +66,13 @@ function AppContent(): React.JSX.Element {
 
   // ----- Profile screen state -----
   const [dateOfBirth, setDateOfBirth] = useState(''); // "YYYY-MM-DD", or '' if not set
+  const [hasSmartphone, setHasSmartphone] = useState(true);
+  const [bankDetails, setBankDetails] = useState<MaskedBankDetails | null>(null); // saved details (masked)
+  const [editingBank, setEditingBank] = useState(false); // true while typing in new details
+  const [removeBank, setRemoveBank] = useState(false);   // true if "Remove" was tapped
+  const [ibanInput, setIbanInput] = useState('');
+  const [bicInput, setBicInput] = useState('');
+  const [bankError, setBankError] = useState('');
   const [gender, setGender] = useState('');
   const [deletionRequestStatus, setDeletionRequestStatus] = useState('NONE');
   const [deletionActionLoading, setDeletionActionLoading] = useState(false);
@@ -224,6 +231,13 @@ function AppContent(): React.JSX.Element {
       setPendingFacePhoto(null);
       setPendingFullBodyPhoto(null);
       setDeletionRequestStatus(data.deletionRequestStatus ?? 'NONE');
+      setHasSmartphone(data.hasSmartphone ?? true);
+      setBankDetails(data.bankDetails ?? null);
+      setEditingBank(false);
+      setRemoveBank(false);
+      setIbanInput('');
+      setBicInput('');
+      setBankError('');
       setMyProductionNames((data.productions ?? []).map((p: Production) => p.name));
       setProductionsError('');
 
@@ -298,7 +312,13 @@ if (myProductionNames.length === 0) {
     }
     setProductionsError('');
 
-        try {
+    setBankError('');
+    if (editingBank && (!ibanInput.trim() || !bicInput.trim())) {
+      setBankError('Please enter both your IBAN and BIC.');
+      return;
+    }
+
+    try {
       // 1) Save productions first. If this is refused (e.g. booked on an
       //    upcoming shoot), stop here so nothing else is half-saved.
       const selectedProductionIds = allProductions
@@ -361,15 +381,33 @@ if (myProductionNames.length === 0) {
           ],
           facePhotoUrl: newFacePhotoUrl,
           fullBodyPhotoUrl: newFullBodyPhotoUrl,
+          hasSmartphone,
+          // Bank details: only sent if the extra changed or removed them
+          ...(removeBank
+            ? { iban: '', bic: '' }
+            : editingBank
+            ? { iban: ibanInput, bic: bicInput }
+            : {}),
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setProfileMessage(`Save failed: ${data.error}`);
+        // Bank errors show under the bank fields; anything else at the bottom
+        if (/IBAN|BIC/.test(data.error ?? '')) {
+          setBankError(data.error);
+        } else {
+          setProfileMessage(`Save failed: ${data.error}`);
+        }
         return;
       }
+
+      setBankDetails(data.bankDetails ?? null);
+      setEditingBank(false);
+      setRemoveBank(false);
+      setIbanInput('');
+      setBicInput('');
 
       setFacePhotoUrl(newFacePhotoUrl);
       setFullBodyPhotoUrl(newFullBodyPhotoUrl);
@@ -917,6 +955,18 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           myProductionNames={myProductionNames}
           onToggleProduction={toggleProduction}
           productionsError={productionsError}
+          hasSmartphone={hasSmartphone}
+          setHasSmartphone={setHasSmartphone}
+          bankDetails={bankDetails}
+          editingBank={editingBank}
+          setEditingBank={setEditingBank}
+          removeBank={removeBank}
+          setRemoveBank={setRemoveBank}
+          ibanInput={ibanInput}
+          setIbanInput={setIbanInput}
+          bicInput={bicInput}
+          setBicInput={setBicInput}
+          bankError={bankError}
         />
       );
     }
@@ -969,6 +1019,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           message={extraDetailMessage}
           onBack={() => setScreen(extraProfileReturnTo)}
           tally={extraTally}
+          token={token}
         />
       );
     }
