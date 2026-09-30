@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { formatToDDMMYYYY, ageFromDob } from '../dateUtils';
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, Image, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
@@ -8,8 +10,8 @@ import ChipMultiSelect from '../components/ChipMultiSelect';
 
 type Props = {
   name: string;
-  age: string;
-  setAge: (value: string) => void;
+  dateOfBirth: string; // "YYYY-MM-DD", or '' if not set
+  setDateOfBirth: (value: string) => void;
   gender: string;
   setGender: (value: string) => void;
   heightCm: string;
@@ -85,8 +87,8 @@ function PhotoPreview({
 
 function ProfileScreen({
   name,
-  age,
-  setAge,
+  dateOfBirth,
+  setDateOfBirth,
   gender,
   setGender,
   heightCm,
@@ -129,6 +131,19 @@ function ProfileScreen({
   onToggleProduction,
   productionsError,
 }: Props) {
+  const [showDobPicker, setShowDobPicker] = useState(false);
+  const age = ageFromDob(dateOfBirth); // worked out live, so it updates as soon as a date is picked
+
+  const handleDobChange = (event: DateTimePickerEvent, selected?: Date) => {
+    setShowDobPicker(false);
+    if (event.type === 'set' && selected) {
+      // Store as "YYYY-MM-DD" using the date the extra picked
+      const y = selected.getFullYear();
+      const m = String(selected.getMonth() + 1).padStart(2, '0');
+      const d = String(selected.getDate()).padStart(2, '0');
+      setDateOfBirth(`${y}-${m}-${d}`);
+    }
+  };
   const allSkills = [...skills, ...otherSkills.split(',').map((s) => s.trim()).filter(Boolean)];
   const allLanguages = [...languages, ...otherLanguages.split(',').map((l) => l.trim()).filter(Boolean)];
   const allAvailability = [...availability, ...otherAvailability.split(',').map((a) => a.trim()).filter(Boolean)];
@@ -182,15 +197,25 @@ function ProfileScreen({
                     </Picker>
                   </View>
 
-                  <Text style={profileStyles.inputLabel}>Age</Text>
-                  <TextInput
-                    style={profileStyles.input}
-                    placeholder="Age"
-                    placeholderTextColor="rgba(255,255,255,0.5)"
-                    value={age}
-                    onChangeText={setAge}
-                    keyboardType="numeric"
-                  />
+                  <Text style={profileStyles.inputLabel}>Date of birth</Text>
+                  <TouchableOpacity style={profileStyles.input} onPress={() => setShowDobPicker(true)}>
+                    <Text style={{ color: dateOfBirth ? '#fff' : 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+                      {dateOfBirth
+                        ? `${formatToDDMMYYYY(dateOfBirth)}  (age ${age})`
+                        : 'Choose your date of birth'}
+                    </Text>
+                  </TouchableOpacity>
+                  {showDobPicker ? (
+                    <DateTimePicker
+                      value={dateOfBirth ? new Date(dateOfBirth) : new Date(1995, 0, 1)}
+                      mode="date"
+                      display="spinner"
+                      themeVariant="dark"
+                      maximumDate={new Date()}
+                      minimumDate={new Date(1900, 0, 1)}
+                      onChange={handleDobChange}
+                    />
+                  ) : null}
 
                   <Text style={profileStyles.inputLabel}>Height (cm)</Text>
                   <TextInput
@@ -355,8 +380,10 @@ function ProfileScreen({
               <Text style={profileStyles.value}>{gender || 'Not set'}</Text>
             </View>
             <View style={profileStyles.field}>
-              <Text style={profileStyles.label}>Age</Text>
-              <Text style={profileStyles.value}>{age || 'Not set'}</Text>
+              <Text style={profileStyles.label}>Date of birth</Text>
+              <Text style={profileStyles.value}>
+                {dateOfBirth ? `${formatToDDMMYYYY(dateOfBirth)} (age ${age})` : 'Not set'}
+              </Text>
             </View>
             <View style={profileStyles.field}>
               <Text style={profileStyles.label}>Height (cm)</Text>

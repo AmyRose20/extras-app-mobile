@@ -98,6 +98,7 @@ export type ExtraProfileDetail = {
   userId: string;
   name: string;
   age: number | null;
+  dateOfBirth: string | null; // e.g. "1997-03-14T00:00:00.000Z"; age above is worked out from this
   gender: string | null;
   heightCm: number | null;
   skills: string[];

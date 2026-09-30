@@ -82,3 +82,20 @@ export function computeWrap(call: Date, wrapTimeOfDay: Date): Date {
 export function isNextDay(call: Date | string, wrap: Date | string): boolean {
   return new Date(call).toDateString() !== new Date(wrap).toDateString();
 }
+
+// Works out someone's age today from their date of birth ("1997-03-14" or a full timestamp).
+// Returns null if there's no date of birth.
+export function ageFromDob(dob: string | Date | null | undefined): number | null {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - birth.getUTCFullYear();
+  const hadBirthdayThisYear =
+    today.getMonth() > birth.getUTCMonth() ||
+    (today.getMonth() === birth.getUTCMonth() && today.getDate() >= birth.getUTCDate());
+  if (!hadBirthdayThisYear) age -= 1;
+
+  return age;
+}

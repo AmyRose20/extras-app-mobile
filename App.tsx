@@ -65,7 +65,7 @@ function AppContent(): React.JSX.Element {
 
 
   // ----- Profile screen state -----
-  const [age, setAge] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState(''); // "YYYY-MM-DD", or '' if not set
   const [gender, setGender] = useState('');
   const [deletionRequestStatus, setDeletionRequestStatus] = useState('NONE');
   const [deletionActionLoading, setDeletionActionLoading] = useState(false);
@@ -205,7 +205,7 @@ function AppContent(): React.JSX.Element {
         return;
       }
 
-      setAge(data.age ? String(data.age) : '');
+      setDateOfBirth(data.dateOfBirth ? data.dateOfBirth.slice(0, 10) : '');
       setGender(data.gender ?? '');
       setHeightCm(data.heightCm ? String(data.heightCm) : '');
       const fetchedSkills: string[] = data.skills ?? [];
@@ -342,7 +342,7 @@ if (myProductionNames.length === 0) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          age: age ? parseInt(age, 10) : null,
+          dateOfBirth: dateOfBirth || null,
           gender: gender || null,
           heightCm: heightCm ? parseInt(heightCm, 10) : null,
                     skills: [
@@ -871,8 +871,8 @@ const adminRequestDeletionForExtra = async (userId: string) => {
       return (
         <ProfileScreen
           name={userName}
-          age={age}
-          setAge={setAge}
+          dateOfBirth={dateOfBirth}
+          setDateOfBirth={setDateOfBirth}
           gender={gender}
           setGender={setGender}
           heightCm={heightCm}
