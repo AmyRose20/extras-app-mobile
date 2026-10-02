@@ -13,7 +13,8 @@ export type Screen =
   | 'shootDayDetail'
   | 'inviteList'
   | 'bulkCreateShootDays'
-  | 'deletionRequests';
+  | 'deletionRequests'
+  | 'productionRequests';
 
 export type Role = 'ADMIN' | 'EXTRA';
 
@@ -21,6 +22,16 @@ export type Role = 'ADMIN' | 'EXTRA';
 export type Production = {
   id: string;
   name: string;
+};
+
+// A production the extra has asked to join, waiting for the coordinator
+export type PendingProduction = Production & {
+  requestedAt: string;
+};
+
+// A production the extra wasn't approved for, and when they can ask again
+export type DeniedProduction = Production & {
+  canRequestAgainAt: string;
 };
 
 // A saved meeting point for the coordinator's production (matches GET /locations)
@@ -135,6 +146,23 @@ export type DeletionRequestSummary = {
   deletionRequestedAt: string;
   deletionRequestedBy: 'EXTRA' | 'ADMIN';
   deletionReason: string | null;
+};
+
+
+// An extra asking to join the coordinator's production (matches GET /production-requests)
+export type ProductionRequestSummary = {
+  id: string; // the request id, used to approve/deny
+  requestedAt: string;
+  extraProfileId: string;
+  name: string;
+  age: number | null;
+  gender: string | null;
+  heightCm: number | null;
+  skills: string[];
+  languages: string[];
+  facePhotoUrl: string | null;
+  fullBodyPhotoUrl: string | null;
+  currentProductions: string[]; // productions they're already approved on
 };
 
 // What the app-wide confirmation dialog should show

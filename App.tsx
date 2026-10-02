@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Screen, Role, Invite, Production, DialogConfig, MaskedBankDetails, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary, DeletionRequestSummary } from './src/types';
+import { Screen, Role, Invite, Production, PendingProduction, DeniedProduction, DialogConfig, MaskedBankDetails, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary, DeletionRequestSummary, ProductionRequestSummary } from './src/types';
 import { API_URL } from './src/api';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { getStorage, ref, putFile, getDownloadURL } from '@react-native-firebase/storage';
@@ -20,6 +20,7 @@ import BulkCreateShootDaysScreen from './src/screens/BulkCreateShootDaysScreen';
 import HeaderMenu, { MenuItem } from './src/components/HeaderMenu';
 import ConfirmDialog from './src/components/ConfirmDialog';
 import DeletionRequestsScreen from './src/screens/DeletionRequestsScreen';
+import ProductionRequestsScreen from './src/screens/ProductionRequestsScreen';
 import { SafeAreaView, Text, View, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -79,6 +80,8 @@ function AppContent(): React.JSX.Element {
   const [allProductions, setAllProductions] = useState<Production[]>([]); // every production, for the chips
   const [myProductionNames, setMyProductionNames] = useState<string[]>([]); // the ones this extra is on
   const [productionsError, setProductionsError] = useState('');
+  const [pendingProductionNames, setPendingProductionNames] = useState<string[]>([]); // asked to join, waiting
+  const [deniedProductions, setDeniedProductions] = useState<DeniedProduction[]>([]); // not approved (+ when they can ask again)
   const [heightCm, setHeightCm] = useState('');
   const [skills, setSkills] = useState<string[]>([]);
   const [otherSkills, setOtherSkills] = useState('');
@@ -121,6 +124,9 @@ function AppContent(): React.JSX.Element {
   const [deletionRequestsList, setDeletionRequestsList] = useState<DeletionRequestSummary[]>([]);
   const [deletionRequestsLoading, setDeletionRequestsLoading] = useState(false);
   const [deletionRequestsMessage, setDeletionRequestsMessage] = useState('');
+    const [productionRequestsList, setProductionRequestsList] = useState<ProductionRequestSummary[]>([]);
+  const [productionRequestsLoading, setProductionRequestsLoading] = useState(false);
+  const [productionRequestsMessage, setProductionRequestsMessage] = useState('');
 
   // ----- Shoot days list / detail screen state (admin) -----
   const [shootDays, setShootDays] = useState<ShootDaySummary[]>([]);
@@ -239,7 +245,12 @@ function AppContent(): React.JSX.Element {
       setIbanInput('');
       setBicInput('');
       setBankError('');
-      setMyProductionNames((data.productions ?? []).map((p: Production) => p.name));
+      // Approved + pending are both "ticked" (unticking a pending one cancels the request)
+      const approvedNames = (data.productions ?? []).map((p: Production) => p.name);
+      const pendingNames = (data.pendingProductions ?? []).map((p: PendingProduction) => p.name);
+      setMyProductionNames([...approvedNames, ...pendingNames]);
+      setPendingProductionNames(pendingNames);
+      setDeniedProductions(data.deniedProductions ?? []);
       setProductionsError('');
 
       // Full list of productions, used for the chips in edit mode
@@ -336,11 +347,14 @@ if (myProductionNames.length === 0) {
         body: JSON.stringify({ productionIds: selectedProductionIds }),
       });
 
+      const prodData = await prodResponse.json();
       if (!prodResponse.ok) {
-        const prodData = await prodResponse.json();
         setProductionsError(prodData.error);
         return;
       }
+      // Keep the "waiting for approval" / "not approved" notes up to date
+      setPendingProductionNames((prodData.pendingProductions ?? []).map((p: PendingProduction) => p.name));
+      setDeniedProductions(prodData.deniedProductions ?? []);
 
       // 2) Then photos + the rest of the profile, as before
       setUploadingPhoto(true);
@@ -638,6 +652,51 @@ const denyDeletionRequest = async (userId: string) => {
   }
 };
 
+
+  // ----- Production requests (extras asking to join my production) -----
+  const loadProductionRequests = async () => {
+    setProductionRequestsLoading(true);
+    setProductionRequestsMessage('');
+    try {
+      const response = await fetch(`${API_URL}/production-requests`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setProductionRequestsMessage(`Could not load requests: ${data.error}`);
+        return;
+      }
+
+      setProductionRequestsList(data);
+    } catch (error) {
+      setProductionRequestsMessage('Something went wrong loading requests.');
+    } finally {
+      setProductionRequestsLoading(false);
+    }
+  };
+
+  // Approve or deny — both remove the request from the list when done
+  const reviewProductionRequest = async (requestId: string, action: 'approve' | 'deny') => {
+    setProductionRequestsMessage('');
+    try {
+      const response = await fetch(`${API_URL}/production-requests/${requestId}/${action}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setProductionRequestsMessage(`Could not ${action}: ${data.error}`);
+        return;
+      }
+
+      setProductionRequestsList((prev) => prev.filter((r) => r.id !== requestId));
+    } catch (error) {
+      setProductionRequestsMessage(`Something went wrong trying to ${action} that request.`);
+    }
+  };
+
 const adminRequestDeletionForExtra = async (userId: string) => {
   try {
     const response = await fetch(`${API_URL}/deletion-requests/${userId}`, {
@@ -885,6 +944,9 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     if (screen === 'deletionRequests') {
       loadDeletionRequests();
     }
+        if (screen === 'productionRequests') {
+      loadProductionRequests();
+    }
   }, [screen, skillFilter, genderFilter, availabilityFilter, nameFilter, role]);
 
   const renderScreen = (): React.JSX.Element => {
@@ -968,6 +1030,8 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           myProductionNames={myProductionNames}
           onToggleProduction={toggleProduction}
           productionsError={productionsError}
+          pendingProductionNames={pendingProductionNames}
+          deniedProductions={deniedProductions}
           hasSmartphone={hasSmartphone}
           setHasSmartphone={setHasSmartphone}
           bankDetails={bankDetails}
@@ -1047,6 +1111,21 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           message={deletionRequestsMessage}
           onApprove={approveDeletionRequest}
           onDeny={denyDeletionRequest}
+          onBack={() => setScreen('home')}
+          showDialog={setDialog}
+        />
+      );
+    }
+ 
+    if (screen === 'productionRequests') {
+      return (
+        <ProductionRequestsScreen
+          productionName={coordinatorProduction}
+          requests={productionRequestsList}
+          loading={productionRequestsLoading}
+          message={productionRequestsMessage}
+          onApprove={(id) => reviewProductionRequest(id, 'approve')}
+          onDeny={(id) => reviewProductionRequest(id, 'deny')}
           onBack={() => setScreen('home')}
           showDialog={setDialog}
         />
@@ -1181,6 +1260,11 @@ const adminRequestDeletionForExtra = async (userId: string) => {
       label: 'Deletion Requests',
       disabled: screen === 'deletionRequests', // greyed out when you're already there
       onPress: () => setScreen('deletionRequests'),
+    });
+      menuItems.push({
+      label: 'Production Requests',
+      disabled: screen === 'productionRequests', // greyed out when you're already there
+      onPress: () => setScreen('productionRequests'),
     });
   }
 

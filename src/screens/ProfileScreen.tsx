@@ -8,7 +8,7 @@ import { styles } from '../styles';
 import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_GROUPS, SKILL_GROUPS, LANGUAGE_GROUPS } from '../constants';
 import ChipMultiSelect from '../components/ChipMultiSelect';
 import GroupedMultiSelect from '../components/GroupedMultiSelect';
-import { MaskedBankDetails } from '../types';
+import { MaskedBankDetails, DeniedProduction } from '../types';
 
 type Props = {
   name: string;
@@ -55,6 +55,8 @@ type Props = {
   myProductionNames: string[];
   onToggleProduction: (name: string) => void;
   productionsError: string;
+  pendingProductionNames: string[]; // asked to join, waiting for the coordinator
+  deniedProductions: DeniedProduction[]; // not approved, with when they can ask again
   hasSmartphone: boolean;
   setHasSmartphone: (value: boolean) => void;
   bankDetails: MaskedBankDetails | null; // saved details (masked), or null
@@ -144,6 +146,8 @@ function ProfileScreen({
   myProductionNames,
   onToggleProduction,
   productionsError,
+  pendingProductionNames,
+  deniedProductions,
   hasSmartphone,
   setHasSmartphone,
   bankDetails,
@@ -269,6 +273,19 @@ function ProfileScreen({
                     emptyText="Couldn't load productions."
                   />
                   <Text style={profileStyles.fieldError}>{productionsError || ' '}</Text>
+                                    <Text style={profileStyles.productionNote}>
+                    New productions need the coordinator's approval. You can leave a production at any time.
+                  </Text>
+                  {pendingProductionNames.length > 0 && (
+                    <Text style={profileStyles.productionNote}>
+                      Waiting for approval: {pendingProductionNames.join(', ')}. Untick to cancel the request.
+                    </Text>
+                  )}
+                  {deniedProductions.map((d) => (
+                    <Text key={d.id} style={profileStyles.productionNote}>
+                      Not approved for {d.name}. You can ask again from {formatToDDMMYYYY(d.canRequestAgainAt)}.
+                    </Text>
+                  ))}
                 </View>
 
                 {/* Skills, languages, availability */}
@@ -486,9 +503,15 @@ function ProfileScreen({
             <View style={profileStyles.field}>
               <Text style={profileStyles.label}>Productions</Text>
               <Text style={profileStyles.value}>
-                {myProductionNames.length > 0 ? myProductionNames.join(', ') : 'Not set'}
+                {myProductionNames.filter((n) => !pendingProductionNames.includes(n)).join(', ') || 'Not set'}
               </Text>
             </View>
+            {pendingProductionNames.length > 0 && (
+              <View style={profileStyles.field}>
+                <Text style={profileStyles.label}>Pending approval</Text>
+                <Text style={profileStyles.value}>{pendingProductionNames.join(', ')}</Text>
+              </View>
+            )}
             <View style={profileStyles.field}>
               <Text style={profileStyles.label}>Gender</Text>
               <Text style={profileStyles.value}>{gender || 'Not set'}</Text>
@@ -725,6 +748,11 @@ const profileStyles = StyleSheet.create({
     color: '#ff9d9d',
     fontSize: 12,
     minHeight: 16,
+  },
+    productionNote: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 12,
+    marginTop: 4,
   },
   smallButton: {
     borderWidth: 1,
