@@ -111,6 +111,7 @@ function AppContent(): React.JSX.Element {
   const [extrasMessage, setExtrasMessage] = useState('');
   const [skillFilter, setSkillFilter] = useState<string[]>([]);
   const [genderFilter, setGenderFilter] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
   const [availabilityFilter, setAvailabilityFilter] = useState<string[]>([]);
   const [minAgeFilter, setMinAgeFilter] = useState('');
   const [maxAgeFilter, setMaxAgeFilter] = useState('');
@@ -533,6 +534,7 @@ if (myProductionNames.length === 0) {
       if (availabilityFilter.length > 0) params.append('availability', availabilityFilter.join(','));
       if (minAgeFilter) params.append('minAge', minAgeFilter);
       if (maxAgeFilter) params.append('maxAge', maxAgeFilter);
+      if (nameFilter.trim()) params.append('name', nameFilter.trim());
       const query = params.toString() ? `?${params.toString()}` : '';
 
       const response = await fetch(`${API_URL}/profiles${query}`, {
@@ -883,7 +885,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     if (screen === 'deletionRequests') {
       loadDeletionRequests();
     }
-  }, [screen, skillFilter, genderFilter, availabilityFilter, role]);
+  }, [screen, skillFilter, genderFilter, availabilityFilter, nameFilter, role]);
 
   const renderScreen = (): React.JSX.Element => {
     if (screen === 'login') {
@@ -1007,6 +1009,8 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           onClearSkillFilter={() => setSkillFilter([])}
           genderFilter={genderFilter}
           onSelectGenderFilter={setGenderFilter}
+          nameFilter={nameFilter}
+          onSearchName={setNameFilter}
           availabilityFilter={availabilityFilter}
           onSelectAvailabilityFilter={toggleAvailabilityFilter}
           onClearAvailabilityFilter={() => setAvailabilityFilter([])}

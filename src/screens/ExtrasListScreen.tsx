@@ -15,6 +15,8 @@ type Props = {
   onSelectSkillFilter: (skill: string) => void;
   onClearSkillFilter: () => void;
   genderFilter: string;
+  nameFilter: string;
+  onSearchName: (name: string) => void;
   onSelectGenderFilter: (gender: string) => void;
   availabilityFilter: string[];
   onSelectAvailabilityFilter: (day: string) => void;
@@ -38,6 +40,8 @@ function ExtrasListScreen({
   onClearSkillFilter,
   genderFilter,
   onSelectGenderFilter,
+  nameFilter,
+  onSearchName,
   availabilityFilter,
   onSelectAvailabilityFilter,
   onClearAvailabilityFilter,
@@ -51,6 +55,15 @@ function ExtrasListScreen({
   onBack,
 }: Props) {
   const [activeFilterType, setActiveFilterType] = useState('skill');
+  
+  // ----- Name search: wait until typing stops, then search -----
+  const [searchText, setSearchText] = useState(nameFilter);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onSearchName(searchText.trim());
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchText, onSearchName]);
 
   // ----- Pagination: 10 extras per page -----
   const [page, setPage] = useState(1);
@@ -90,7 +103,30 @@ function ExtrasListScreen({
     >
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView ref={scrollRef} contentContainerStyle={extrasListStyles.scrollContent}>
+
           <Text style={extrasListStyles.title}>Extra Profiles</Text>
+          
+          {/* Name search */}
+          <View style={extrasListStyles.searchWrapper}>
+            <TextInput
+              style={[extrasListStyles.input, extrasListStyles.searchInput]}
+              placeholder="Search by name"
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={searchText}
+              onChangeText={setSearchText}
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchText.length > 0 && (
+              <TouchableOpacity
+                style={extrasListStyles.searchClear}
+                onPress={() => setSearchText('')}
+                accessibilityLabel="Clear search"
+              >
+                <Text style={extrasListStyles.searchClearText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           <Text style={extrasListStyles.fieldLabel}>Filter by</Text>
           <View style={extrasListStyles.filterRow}>
@@ -279,6 +315,27 @@ function ExtrasListScreen({
 }
 
 const extrasListStyles = StyleSheet.create({
+  searchWrapper: {
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  searchInput: {
+    marginBottom: 0,
+    paddingRight: 44, // room for the ✕ so text doesn't go under it
+  },
+  searchClear: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchClearText: {
+    color: '#fff',
+    fontSize: 16,
+  },
   container: {
     flex: 1,
   },
