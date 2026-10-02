@@ -14,6 +14,8 @@ import ExtraProfileDetailScreen from './src/screens/ExtraProfileDetailScreen';
 import ShootDaysListScreen from './src/screens/ShootDaysListScreen';
 import ShootDayDetailScreen from './src/screens/ShootDayDetailScreen';
 import { getAuth, signInWithCustomToken, signOut } from '@react-native-firebase/auth';
+import { getApp } from '@react-native-firebase/app';
+import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_GROUPS } from './src/constants';
 import InviteListScreen from './src/screens/InviteListScreen';
 import BulkCreateShootDaysScreen from './src/screens/BulkCreateShootDaysScreen';
@@ -21,7 +23,7 @@ import HeaderMenu, { MenuItem } from './src/components/HeaderMenu';
 import ConfirmDialog from './src/components/ConfirmDialog';
 import DeletionRequestsScreen from './src/screens/DeletionRequestsScreen';
 import ProductionRequestsScreen from './src/screens/ProductionRequestsScreen';
-import { SafeAreaView, Text, View, StyleSheet, StatusBar } from 'react-native';
+import { SafeAreaView, Text, View, StyleSheet, StatusBar, AppState } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
@@ -124,9 +126,11 @@ function AppContent(): React.JSX.Element {
   const [deletionRequestsList, setDeletionRequestsList] = useState<DeletionRequestSummary[]>([]);
   const [deletionRequestsLoading, setDeletionRequestsLoading] = useState(false);
   const [deletionRequestsMessage, setDeletionRequestsMessage] = useState('');
-    const [productionRequestsList, setProductionRequestsList] = useState<ProductionRequestSummary[]>([]);
+  const [productionRequestsList, setProductionRequestsList] = useState<ProductionRequestSummary[]>([]);
   const [productionRequestsLoading, setProductionRequestsLoading] = useState(false);
   const [productionRequestsMessage, setProductionRequestsMessage] = useState('');
+  // Red notification badges: how many NEW things since each screen was last opened
+  const [badgeCounts, setBadgeCounts] = useState({ invites: 0, deletionRequests: 0, productionRequests: 0 });
 
   // ----- Shoot days list / detail screen state (admin) -----
   const [shootDays, setShootDays] = useState<ShootDaySummary[]>([]);
@@ -696,6 +700,37 @@ const denyDeletionRequest = async (userId: string) => {
       setProductionRequestsMessage(`Something went wrong trying to ${action} that request.`);
     }
   };
+ 
+  // ----- Notification badges -----
+  const loadBadgeCounts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/badges`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return; // badges are a nice-to-have: fail quietly
+      const data = await response.json();
+      setBadgeCounts({
+        invites: data.invites ?? 0,
+        deletionRequests: data.deletionRequests ?? 0,
+        productionRequests: data.productionRequests ?? 0,
+      });
+    } catch (error) {
+      // Non-critical — the app just won't show badges if this fails.
+    }
+  };
+
+  // Opening a screen clears its badge (until something newer arrives)
+  const markBadgeSeen = async (type: 'invites' | 'deletionRequests' | 'productionRequests') => {
+    setBadgeCounts((prev) => ({ ...prev, [type]: 0 })); // clear it on screen straight away
+    try {
+      await fetch(`${API_URL}/badges/seen/${type}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (error) {
+      // Non-critical — worst case the badge reappears next time counts load.
+    }
+  };
 
 const adminRequestDeletionForExtra = async (userId: string) => {
   try {
@@ -948,6 +983,35 @@ const adminRequestDeletionForExtra = async (userId: string) => {
       loadProductionRequests();
     }
   }, [screen, skillFilter, genderFilter, availabilityFilter, nameFilter, role]);
+ 
+  // Badges: refresh on Home, and clear one when its screen is opened
+  useEffect(() => {
+    if (!token) return; // not logged in
+    if (screen === 'home') loadBadgeCounts();
+    if (screen === 'invites') markBadgeSeen('invites');
+    if (screen === 'deletionRequests') markBadgeSeen('deletionRequests');
+    if (screen === 'productionRequests') markBadgeSeen('productionRequests');
+  }, [screen, token]);
+  
+  // Badges: also refresh when the app comes back to the front,
+  // or a push notification arrives while the app is open
+  useEffect(() => {
+    if (!token) return; // not logged in
+
+    const appStateListener = AppState.addEventListener('change', (state) => {
+      if (state === 'active') loadBadgeCounts();
+    });
+
+    const stopListeningForPush = onMessage(getMessaging(getApp()), () => {
+      loadBadgeCounts();
+    });
+
+    // Clean up when logging out (token changes), so listeners don't pile up
+    return () => {
+      appStateListener.remove();
+      stopListeningForPush();
+    };
+  }, [token]);
 
   const renderScreen = (): React.JSX.Element => {
     if (screen === 'login') {
@@ -976,6 +1040,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
             setScreen(target);
           }}
           onSelectShootDay={(id) => handleSelectShootDay(id, 'home')}
+          invitesBadge={badgeCounts.invites}
         />
       );
     }
@@ -1246,6 +1311,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
         invites={invites}
         onNavigate={(target) => setScreen(target)}
         onSelectShootDay={(id) => handleSelectShootDay(id, 'home')}
+        invitesBadge={badgeCounts.invites}
       />
     );
   };
@@ -1258,11 +1324,13 @@ const adminRequestDeletionForExtra = async (userId: string) => {
   if (role === 'ADMIN') {
     menuItems.push({
       label: 'Deletion Requests',
+      badge: badgeCounts.deletionRequests,
       disabled: screen === 'deletionRequests', // greyed out when you're already there
       onPress: () => setScreen('deletionRequests'),
     });
       menuItems.push({
       label: 'Production Requests',
+      badge: badgeCounts.productionRequests,
       disabled: screen === 'productionRequests', // greyed out when you're already there
       onPress: () => setScreen('productionRequests'),
     });
@@ -1359,6 +1427,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
             onGoHome={() => setScreen('home')}
             onLogout={handleLogout}
             items={menuItems}
+            badgeCount={role === 'ADMIN' ? badgeCounts.deletionRequests + badgeCounts.productionRequests : 0}
           />
         )}
 

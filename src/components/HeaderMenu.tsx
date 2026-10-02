@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { spacing } from '../styles';
+import Badge from './Badge';
 
 // One extra option in the menu (e.g. "Remove from production")
 export type MenuItem = {
@@ -8,6 +9,7 @@ export type MenuItem = {
   onPress: () => void;
   danger?: boolean;   // shown in red
   disabled?: boolean; // greyed out and not tappable
+  badge?: number;     // red count shown next to the label
 };
 
 type Props = {
@@ -15,9 +17,10 @@ type Props = {
   onGoHome: () => void;
   onLogout: () => void;
   items?: MenuItem[]; // screen-specific options, shown between Home and Log Out
+  badgeCount?: number; // red count on the hamburger icon itself
 };
 
-function HeaderMenu({ isHome, onGoHome, onLogout, items = [] }: Props) {
+function HeaderMenu({ isHome, onGoHome, onLogout, items = [], badgeCount = 0 }: Props) {
   const [open, setOpen] = useState(false);
 
   const handleGoHome = () => {
@@ -37,6 +40,7 @@ function HeaderMenu({ isHome, onGoHome, onLogout, items = [] }: Props) {
         <View style={localStyles.bar} />
         <View style={localStyles.bar} />
         <View style={localStyles.bar} />
+        <Badge count={badgeCount} />
       </TouchableOpacity>
 
       {open && (
@@ -67,6 +71,7 @@ function HeaderMenu({ isHome, onGoHome, onLogout, items = [] }: Props) {
                   >
                     {item.label}
                   </Text>
+                  {item.badge ? <Badge count={item.badge} style={localStyles.inlineBadge} /> : null}
                 </TouchableOpacity>
               ))}
             </>
@@ -121,6 +126,16 @@ const localStyles = StyleSheet.create({
   dropdownItem: {
     paddingVertical: 12,
     paddingHorizontal: 14,
+    flexDirection: 'row', // label and badge side by side
+    alignItems: 'center',
+  },
+  inlineBadge: {
+    // In the menu, the badge sits next to the text instead of on a corner
+    position: 'relative',
+    top: 0,
+    right: 0,
+    marginLeft: 8,
+    borderColor: '#241d3d', // ring matches the menu background
   },
   dropdownText: {
     fontSize: 13,

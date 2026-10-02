@@ -12,6 +12,7 @@ import {
   AuthorizationStatus,
 } from '@react-native-firebase/messaging';
 import { API_URL } from '../api';
+import Badge from '../components/Badge';
 
 type Props = {
   userName: string;
@@ -23,6 +24,7 @@ type Props = {
     screen: 'profile' | 'invites' | 'createCallRequest' | 'extrasList' | 'shootDaysList' | 'bulkCreateShootDays' | 'deletionRequests'
   ) => void;
   onSelectShootDay: (id: string) => void;
+  invitesBadge?: number; // extras: how many NEW invites (red badge on My Invites)
 };
 
 async function registerForPushNotifications(token: string) {
@@ -63,7 +65,7 @@ async function registerForPushNotifications(token: string) {
   }
 }
 
-function HomeScreen({ userName, role, token, shootDays, invites, onNavigate, onSelectShootDay }: Props) {
+function HomeScreen({ userName, role, token, shootDays, invites, onNavigate, onSelectShootDay, invitesBadge = 0 }: Props) {
 
   useEffect(() => {
     registerForPushNotifications(token);
@@ -142,6 +144,7 @@ function HomeScreen({ userName, role, token, shootDays, invites, onNavigate, onS
 
               <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('invites')}>
                 <Text style={homeStyles.buttonText}>My Invites</Text>
+                <Badge count={invitesBadge} />
               </TouchableOpacity>
             </>
           ) : (

@@ -281,7 +281,9 @@ function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }
               otherText={otherSkills}
               onOtherTextChange={setOtherSkills}
             />
-            <Text style={createCallStyles.hintText}>Extras must have all of the selected skills.</Text>
+            <Text style={createCallStyles.hintText}>
+              Extras with any of the selected skills will be invited. Leave empty to include everyone.
+            </Text>
           </View>
 
           {warning ? <Text style={createCallStyles.warningText}>{warning}</Text> : null}
