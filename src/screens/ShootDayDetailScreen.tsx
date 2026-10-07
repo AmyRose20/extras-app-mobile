@@ -27,7 +27,8 @@ type Props = {
   onCancelEditCallRequest: () => void;
   onSaveCallRequest: () => void;
   onViewResponses: (callRequestId: string) => void;
-    onAddCallRequest: () => void; // opens Create Call Request with this shoot day selected
+  onAddCallRequest: () => void; // opens Create Call Request with this shoot day selected
+  onOpenAttendance: () => void; // past shoot days: no-shows, finish times, payroll
 };
 
 function ShootDayDetailScreen({
@@ -47,6 +48,7 @@ function ShootDayDetailScreen({
   onSaveCallRequest,
   onViewResponses,
   onAddCallRequest,
+  onOpenAttendance,
 }: Props) {
   // ----- Saved meeting points for the dropdown -----
   const [locations, setLocations] = useState<Location[]>([]);
@@ -527,8 +529,12 @@ function ShootDayDetailScreen({
                         : 'Not set'}
                     </Text>
 
-                    {shootDay.isPast ? (
-                      <Text style={detailStyles.pastNotice}>This shoot day has passed and can no longer be edited.</Text>
+                    {shootDay.isPast ? (                                           <>
+                        <Text style={detailStyles.pastNotice}>This shoot day has passed and can no longer be edited.</Text>
+                        <TouchableOpacity style={[detailStyles.button, { marginTop: 12 }]} onPress={onOpenAttendance}>
+                          <Text style={detailStyles.buttonText}>Attendance</Text>
+                        </TouchableOpacity>
+                      </>
                     ) : (
                       <TouchableOpacity style={detailStyles.button} onPress={startEdit}>
                         <Text style={detailStyles.buttonText}>Edit Shoot Day</Text>

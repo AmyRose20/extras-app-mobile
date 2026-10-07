@@ -17,7 +17,7 @@ type Props = {
 function statusStyle(status: string, isExpired: boolean) {
   if (isExpired || status === 'EXPIRED') return invitesStyles.statusNegative;
   if (status === 'ACCEPTED') return invitesStyles.statusAccepted;
-  if (status === 'DECLINED' || status === 'CANCELLED') return invitesStyles.statusNegative;
+  if (status === 'DECLINED' || status === 'CANCELLED' || status === 'NO_SHOW') return invitesStyles.statusNegative;
   return invitesStyles.statusPending;
 }
 
@@ -127,6 +127,10 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
                   <Text style={invitesStyles.statNumber}>{tally.cancelled}</Text>
                   <Text style={invitesStyles.statLabel}>Cancelled</Text>
                 </View>
+                <View style={invitesStyles.statColumn}>
+                  <Text style={invitesStyles.statNumber}>{tally.noShows}</Text>
+                  <Text style={invitesStyles.statLabel}>No-shows</Text>
+                </View>
               </View>
             </View>
           ) : null}
@@ -177,7 +181,7 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
                   </TouchableOpacity>
                 ) : null}
                 <Text style={statusStyle(invite.status, invite.isExpired)}>
-                  Status: {invite.isExpired ? 'EXPIRED' : invite.status}
+                  Status: {invite.isExpired ? 'EXPIRED' : invite.status === 'NO_SHOW' ? 'NO-SHOW' : invite.status}
                 </Text>
 
                 {invite.status === 'PENDING' && !invite.isExpired ? (

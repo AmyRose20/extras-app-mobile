@@ -68,6 +68,8 @@ type Props = {
   setIbanInput: (value: string) => void;
   bicInput: string;
   setBicInput: (value: string) => void;
+  accountNameInput: string;
+  setAccountNameInput: (value: string) => void;
   bankError: string;
 };
 
@@ -159,6 +161,8 @@ function ProfileScreen({
   setIbanInput,
   bicInput,
   setBicInput,
+  accountNameInput,
+  setAccountNameInput,
   bankError,
 }: Props) {
   const [showDobPicker, setShowDobPicker] = useState(false);
@@ -408,6 +412,19 @@ function ProfileScreen({
                         autoCapitalize="characters"
                         autoCorrect={false}
                       />
+                                            <TextInput
+                        style={profileStyles.input}
+                        placeholder="Account holder name"
+                        placeholderTextColor="rgba(255,255,255,0.5)"
+                        value={accountNameInput}
+                        onChangeText={setAccountNameInput}
+                        autoCapitalize="words"
+                        autoCorrect={false}
+                        maxLength={70}
+                      />
+                      <Text style={profileStyles.productionNote}>
+                        Exactly as it appears on your bank account (for example a joint account). Usually just your name.
+                      </Text>
                       <TouchableOpacity
                         onPress={() => {
                           setEditingBank(false);
@@ -430,8 +447,17 @@ function ProfileScreen({
                       <Text style={profileStyles.value}>
                         {bankDetails.ibanMasked} · {bankDetails.bic}
                       </Text>
+                                            {bankDetails.accountHolderName ? (
+                        <Text style={profileStyles.productionNote}>Account name: {bankDetails.accountHolderName}</Text>
+                      ) : (
+                        <Text style={profileStyles.fieldError}>Please add the account holder name: tap Change.</Text>
+                      )}
                       <View style={profileStyles.linkRow}>
-                        <TouchableOpacity onPress={() => setEditingBank(true)}>
+                        <TouchableOpacity onPress={() => {
+                          // Pre-fill with their saved account name, or their own name
+                          setAccountNameInput(bankDetails?.accountHolderName || name);
+                          setEditingBank(true);
+                        }}>
                           <Text style={profileStyles.linkText}>Change</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => setRemoveBank(true)}>
@@ -440,7 +466,11 @@ function ProfileScreen({
                       </View>
                     </>
                   ) : (
-                    <TouchableOpacity onPress={() => setEditingBank(true)}>
+                    <TouchableOpacity onPress={() => {
+                          // Pre-fill with their saved account name, or their own name
+                          setAccountNameInput(name);
+                          setEditingBank(true);
+                        }}>
                       <Text style={profileStyles.linkText}>+ Add bank details</Text>
                     </TouchableOpacity>
                   )}
@@ -575,7 +605,9 @@ function ProfileScreen({
             <View style={[profileStyles.field, { marginBottom: 0 }]}>
               <Text style={profileStyles.label}>Bank details</Text>
               <Text style={profileStyles.value}>
-                {bankDetails ? `${bankDetails.ibanMasked} · ${bankDetails.bic}` : 'Not added'}
+                {bankDetails
+                  ? `${bankDetails.ibanMasked} · ${bankDetails.bic}${bankDetails.accountHolderName ? ` · ${bankDetails.accountHolderName}` : ''}`
+                  : 'Not added'}
               </Text>
             </View>
           </View>

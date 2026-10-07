@@ -154,10 +154,14 @@ function ExtraProfileDetailScreen({ token, profile, loading, message, onBack, ta
                       <Text style={detailStyles.statNumber}>{tally.cancelled}</Text>
                       <Text style={detailStyles.statLabel}>Cancelled</Text>
                     </View>
+                    <View style={detailStyles.statColumn}>
+                      <Text style={detailStyles.statNumber}>{tally.noShows}</Text>
+                      <Text style={detailStyles.statLabel}>No-shows</Text>
+                    </View>
                   </View>
 
                   {tally.threeStrikes ? (
-                    <Text style={detailStyles.strikesWarning}>⚠ 3+ cancellations in the last 90 days</Text>
+                    <Text style={detailStyles.strikesWarning}>⚠ 3+ cancellations or no-shows in the last 90 days</Text>
                   ) : null}
                 </View>
               ) : null}
@@ -183,6 +187,10 @@ function ExtraProfileDetailScreen({ token, profile, loading, message, onBack, ta
                     <Text style={detailStyles.detailRow}>
                       <Text style={detailStyles.fieldLabelInline}>BIC: </Text>
                       {bank.bic}
+                    </Text>
+                    <Text style={detailStyles.detailRow}>
+                      <Text style={detailStyles.fieldLabelInline}>Account name: </Text>
+                      {bank.accountHolderName}
                     </Text>
                     <TouchableOpacity onPress={() => setBank(null)}>
                       <Text style={detailStyles.linkText}>Hide</Text>

@@ -23,6 +23,7 @@ import HeaderMenu, { MenuItem } from './src/components/HeaderMenu';
 import ConfirmDialog from './src/components/ConfirmDialog';
 import DeletionRequestsScreen from './src/screens/DeletionRequestsScreen';
 import ProductionRequestsScreen from './src/screens/ProductionRequestsScreen';
+import AttendanceScreen from './src/screens/AttendanceScreen';
 import { SafeAreaView, Text, View, StyleSheet, StatusBar, AppState } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -75,6 +76,7 @@ function AppContent(): React.JSX.Element {
   const [removeBank, setRemoveBank] = useState(false);   // true if "Remove" was tapped
   const [ibanInput, setIbanInput] = useState('');
   const [bicInput, setBicInput] = useState('');
+  const [accountNameInput, setAccountNameInput] = useState(''); // name on the bank account
   const [bankError, setBankError] = useState('');
   const [gender, setGender] = useState('');
   const [deletionRequestStatus, setDeletionRequestStatus] = useState('NONE');
@@ -185,6 +187,16 @@ function AppContent(): React.JSX.Element {
     setMessage('');
     setScreen('login');
     setCoordinatorProduction(null);
+    // Forget the last user's searches, filters, lists and badge counts,
+    // so the next person to log in on this phone starts fresh
+    setNameFilter('');
+    setSkillFilter([]);
+    setGenderFilter('');
+    setAvailabilityFilter([]);
+    setMinAgeFilter('');
+    setMaxAgeFilter('');
+    setExtras([]);
+    setBadgeCounts({ invites: 0, deletionRequests: 0, productionRequests: 0 });
   };
 
   const pickImage = async (onPicked: (uri: string) => void) => {
@@ -248,6 +260,7 @@ function AppContent(): React.JSX.Element {
       setRemoveBank(false);
       setIbanInput('');
       setBicInput('');
+      setAccountNameInput('');
       setBankError('');
       // Approved + pending are both "ticked" (unticking a pending one cancels the request)
       const approvedNames = (data.productions ?? []).map((p: Production) => p.name);
@@ -330,8 +343,8 @@ if (myProductionNames.length === 0) {
     setProductionsError('');
 
     setBankError('');
-    if (editingBank && (!ibanInput.trim() || !bicInput.trim())) {
-      setBankError('Please enter both your IBAN and BIC.');
+    if (editingBank && (!ibanInput.trim() || !bicInput.trim() || !accountNameInput.trim())) {
+      setBankError('Please enter your IBAN, BIC and the account holder name.');
       return;
     }
 
@@ -406,7 +419,7 @@ if (myProductionNames.length === 0) {
           ...(removeBank
             ? { iban: '', bic: '' }
             : editingBank
-            ? { iban: ibanInput, bic: bicInput }
+            ? { iban: ibanInput, bic: bicInput, accountHolderName: accountNameInput }
             : {}),
         }),
       });
@@ -415,7 +428,7 @@ if (myProductionNames.length === 0) {
 
       if (!response.ok) {
         // Bank errors show under the bank fields; anything else at the bottom
-        if (/IBAN|BIC/.test(data.error ?? '')) {
+        if (/IBAN|BIC|account holder/i.test(data.error ?? '')) {
           setBankError(data.error);
         } else {
           setProfileMessage(`Save failed: ${data.error}`);
@@ -428,7 +441,7 @@ if (myProductionNames.length === 0) {
       setRemoveBank(false);
       setIbanInput('');
       setBicInput('');
-
+      setAccountNameInput('');
       setFacePhotoUrl(newFacePhotoUrl);
       setFullBodyPhotoUrl(newFullBodyPhotoUrl);
       setPendingFacePhoto(null);
@@ -1108,6 +1121,8 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           setIbanInput={setIbanInput}
           bicInput={bicInput}
           setBicInput={setBicInput}
+          accountNameInput={accountNameInput}
+          setAccountNameInput={setAccountNameInput}
           bankError={bankError}
         />
       );
@@ -1209,6 +1224,18 @@ const adminRequestDeletionForExtra = async (userId: string) => {
       );
     }
 
+    if (screen === 'attendance' && selectedShootDay) {
+      return (
+        <AttendanceScreen
+          token={token}
+          shootDayId={selectedShootDay.id}
+          productionName={coordinatorProduction}
+          onBack={() => setScreen('shootDayDetail')}
+          showDialog={setDialog}
+        />
+      );
+    }
+
     if (screen === 'shootDayDetail') {
       return (
         <ShootDayDetailScreen
@@ -1231,6 +1258,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           onCancelEditCallRequest={handleCancelEditCallRequest}
           onSaveCallRequest={handleSaveCallRequest}
           onViewResponses={handleViewResponses}
+          onOpenAttendance={() => setScreen('attendance')}
           onAddCallRequest={() => {
             if (selectedShootDay) {
               setCallRequestShootDayId(selectedShootDay.id);

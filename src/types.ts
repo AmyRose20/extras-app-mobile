@@ -14,7 +14,8 @@ export type Screen =
   | 'inviteList'
   | 'bulkCreateShootDays'
   | 'deletionRequests'
-  | 'productionRequests';
+  | 'productionRequests'
+  | 'attendance';
 
 export type Role = 'ADMIN' | 'EXTRA';
 
@@ -45,7 +46,7 @@ export type Location = {
 
 export type Invite = {
   id: string;
-  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED' | 'NO_SHOW';
   isExpired: boolean;
   callRequest: {
     description: string;
@@ -66,6 +67,19 @@ export type Tally = {
   declined: number;
   cancelled: number;
   threeStrikes: boolean;
+  noShows: number;
+};
+
+
+// One extra on the Attendance screen (matches GET /shoot-days/:id/attendance)
+export type Attendee = {
+  inviteId: string;
+  extraProfileId: string;
+  name: string;
+  callRequest: string; // which call request they were booked for
+  noShow: boolean;
+  finishedAt: string | null; // their finish time, or the estimated wrap if none set
+  finishTimeIsEstimate: boolean; // true = nobody has set it yet, it's the estimated wrap
 };
 
 // One row in the admin's shoot days list (matches GET /shoot-days)
@@ -130,12 +144,14 @@ export type ExtraProfileDetail = {
 export type BankDetails = {
   iban: string; // e.g. "IE29 AIBK 9311 5212 3456 78"
   bic: string;
+  accountHolderName: string; // name on the bank account (falls back to their app name)
 };
 
 // What an extra sees of their own bank details (never the full IBAN)
 export type MaskedBankDetails = {
   ibanMasked: string; // e.g. "IE•• •••• •••• 5678"
   bic: string;
+  accountHolderName: string | null; // null for older bank details saved before this field existed
 };
 
 // One row in the admin's pending-deletion-requests list (matches GET /deletion-requests)
