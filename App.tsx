@@ -26,6 +26,7 @@ import ProductionRequestsScreen from './src/screens/ProductionRequestsScreen';
 import AttendanceScreen from './src/screens/AttendanceScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
+import InviteExtrasScreen from './src/screens/InviteExtrasScreen';
 import { SafeAreaView, Text, View, StyleSheet, StatusBar, AppState } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -1022,7 +1023,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     if (screen === 'deletionRequests') {
       loadDeletionRequests();
     }
-        if (screen === 'productionRequests') {
+    if (screen === 'productionRequests') {
       loadProductionRequests();
     }
   }, [screen, skillFilter, genderFilter, availabilityFilter, nameFilter, role]);
@@ -1265,6 +1266,15 @@ const adminRequestDeletionForExtra = async (userId: string) => {
       );
     }
  
+    if (screen === 'inviteExtras') {
+      return (
+        <InviteExtrasScreen
+          token={token}
+          productionName={coordinatorProduction}
+          onBack={() => setScreen('home')}
+        />
+      );
+    }
     if (screen === 'productionRequests') {
       return (
         <ProductionRequestsScreen
@@ -1435,6 +1445,11 @@ const adminRequestDeletionForExtra = async (userId: string) => {
       badge: badgeCounts.productionRequests,
       disabled: screen === 'productionRequests', // greyed out when you're already there
       onPress: () => setScreen('productionRequests'),
+    });
+    menuItems.push({
+      label: 'Invite Extras',
+      disabled: screen === 'inviteExtras', // greyed out when you're already there
+      onPress: () => setScreen('inviteExtras'),
     });
   }
 

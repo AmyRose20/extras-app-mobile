@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet, RefreshControl } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { API_URL } from '../api';
 
@@ -8,6 +8,7 @@ type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
 type InviteRow = {
   extraProfileId: string;
   name: string;
+  hasSmartphone: boolean; // false = gets invites by email (shown with an "Email" tag)
 };
 
 type Props = {
@@ -29,38 +30,48 @@ function InviteListScreen({ token, callRequestId, status, onBack, onSelectExtra 
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [refreshing, setRefreshing] = useState(false); // true while the pull-to-refresh spinner shows
+
+  // Loads the extras with this status. Used when the screen opens, and when the list is pulled down.
+  const loadInvites = async () => {
+    try {
+      const response = await fetch(`${API_URL}/call-requests/${callRequestId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setMessage(`Could not load responses: ${data.error}`);
+        return;
+      }
+
+      const filtered = data.callRequest.invites
+        .filter((invite: any) => invite.status === status)
+        .map((invite: any) => ({
+          extraProfileId: invite.extraProfileId,
+          name: invite.extraProfile.user.name,
+          hasSmartphone: invite.extraProfile.hasSmartphone !== false,
+        }));
+
+      setInvites(filtered);
+      setMessage('');
+    } catch (error) {
+      setMessage('Something went wrong loading responses.');
+    } finally {
+      setLoading(false); // runs whether it worked or not
+    }
+  };
 
   useEffect(() => {
-    const loadInvites = async () => {
-      try {
-        const response = await fetch(`${API_URL}/call-requests/${callRequestId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-
-        if (!response.ok) {
-          setMessage(`Could not load responses: ${data.error}`);
-          setLoading(false);
-          return;
-        }
-
-        const filtered = data.callRequest.invites
-          .filter((invite: any) => invite.status === status)
-          .map((invite: any) => ({
-            extraProfileId: invite.extraProfileId,
-            name: invite.extraProfile.user.name,
-          }));
-
-        setInvites(filtered);
-        setLoading(false);
-      } catch (error) {
-        setMessage('Something went wrong loading responses.');
-        setLoading(false);
-      }
-    };
-
     loadInvites();
   }, []);
+
+  // Pull the list down to reload it (e.g. to see someone who's just answered by email)
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadInvites();
+    setRefreshing(false);
+  };
 
   return (
     <LinearGradient
@@ -71,7 +82,12 @@ function InviteListScreen({ token, callRequestId, status, onBack, onSelectExtra 
       style={inviteListStyles.container}
     >
       <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={inviteListStyles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={inviteListStyles.scrollContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d99c4a" colors={['#d99c4a']} />
+          }
+        >
           <Text style={inviteListStyles.title}>{STATUS_LABELS[status]}</Text>
 
           {loading ? <Text style={inviteListStyles.message}>Loading...</Text> : null}
@@ -87,7 +103,10 @@ function InviteListScreen({ token, callRequestId, status, onBack, onSelectExtra 
                 style={inviteListStyles.card}
                 onPress={() => onSelectExtra(invite.extraProfileId)}
               >
-                <Text style={inviteListStyles.cardTitle}>{invite.name}</Text>
+                <View style={inviteListStyles.nameRow}>
+                  <Text style={inviteListStyles.cardTitle}>{invite.name}</Text>
+                  {!invite.hasSmartphone ? <Text style={inviteListStyles.emailTag}>Email</Text> : null}
+                </View>
               </TouchableOpacity>
             ))}
 
@@ -134,6 +153,23 @@ const inviteListStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  // Small pill next to extras without a smartphone (they get invites by email)
+  emailTag: {
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#d99c4a',
+    color: '#d99c4a',
+    fontSize: 11,
+    fontWeight: '700',
+    overflow: 'hidden',
   },
   buttonGhost: {
     backgroundColor: 'transparent',

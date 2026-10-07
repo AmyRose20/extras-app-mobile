@@ -17,7 +17,8 @@ export type Screen =
   | 'productionRequests'
   | 'attendance'
   | 'forgotPassword'
-  | 'changePassword';
+  | 'changePassword'
+  | 'inviteExtras';
 
 export type Role = 'ADMIN' | 'EXTRA';
 
@@ -191,4 +192,17 @@ export type DialogConfig = {
   onConfirm?: () => void;
   cancelText?: string;
   destructive?: boolean;
+};
+
+// A sign-up invite a coordinator emailed (matches GET /signup-invites)
+export type SignupInviteStatus = 'SENT' | 'SIGNED_UP' | 'ADDED' | 'EXPIRED';
+
+export type SignupInvite = {
+  id: string;
+  email: string;
+  status: SignupInviteStatus;
+  sentAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+  name: string | null; // who signed up / was added, if they have
 };
