@@ -24,6 +24,8 @@ import ConfirmDialog from './src/components/ConfirmDialog';
 import DeletionRequestsScreen from './src/screens/DeletionRequestsScreen';
 import ProductionRequestsScreen from './src/screens/ProductionRequestsScreen';
 import AttendanceScreen from './src/screens/AttendanceScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
+import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import { SafeAreaView, Text, View, StyleSheet, StatusBar, AppState } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -45,6 +47,7 @@ function AppContent(): React.JSX.Element {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [token, setToken] = useState('');
+  const [loginNotice, setLoginNotice] = useState(''); // green message on the login screen
   const [userName, setUserName] = useState('');
   const [coordinatorProduction, setCoordinatorProduction] = useState<string | null>(null);
   const [role, setRole] = useState<Role>('EXTRA');
@@ -150,6 +153,7 @@ function AppContent(): React.JSX.Element {
   const [extraTally, setExtraTally] = useState<Tally | null>(null);
 
   const handleLogin = async () => {
+    setLoginNotice('');
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
@@ -198,6 +202,32 @@ function AppContent(): React.JSX.Element {
     setExtras([]);
     setBadgeCounts({ invites: 0, deletionRequests: 0, productionRequests: 0 });
   };
+
+  // If the password is changed on another phone, every request from THIS phone
+  // gets a 401 with code PASSWORD_CHANGED. Watch all requests for that, and
+  // send the user back to the login screen with a clear message.
+  useEffect(() => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: any, init?: any) => {
+      const response = await originalFetch(input, init);
+      if (response.status === 401) {
+        try {
+          const data = await response.clone().json(); // clone, so the screen can still read it too
+          if (data.code === 'PASSWORD_CHANGED') {
+            await handleLogout();
+            setMessage('Your password was changed. Please log in again.');
+          }
+        } catch (error) {
+          // Not JSON, so not ours to handle
+        }
+      }
+      return response;
+    }) as typeof fetch;
+
+    return () => {
+      globalThis.fetch = originalFetch; // put the normal fetch back if App ever unmounts
+    };
+  }, []);
 
   const pickImage = async (onPicked: (uri: string) => void) => {
   const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8 });
@@ -1027,6 +1057,38 @@ const adminRequestDeletionForExtra = async (userId: string) => {
   }, [token]);
 
   const renderScreen = (): React.JSX.Element => {
+    if (screen === 'changePassword') {
+      return (
+        <ChangePasswordScreen
+          token={token}
+          onBack={() => setScreen('home')}
+          onChanged={(newToken) => {
+            setToken(newToken); // this phone stays logged in; other phones are logged out
+            setScreen('home');
+            setDialog({
+              title: 'Password changed',
+              message: "Your password has been changed. You've been logged out on any other phones.",
+              confirmText: 'OK',
+            });
+          }}
+        />
+      );
+    }
+    if (screen === 'forgotPassword') {
+      return (
+        <ForgotPasswordScreen
+          initialEmail={email}
+          onBack={() => setScreen('login')}
+          onDone={(resetEmail) => {
+            setEmail(resetEmail);
+            setPassword('');
+            setMessage('');
+            setLoginNotice('Password reset. Please log in with your new password.');
+            setScreen('login');
+          }}
+        />
+      );
+    }
     if (screen === 'login') {
       return (
         <LoginScreen
@@ -1036,6 +1098,12 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           setPassword={setPassword}
           message={message}
           onLogin={handleLogin}
+          notice={loginNotice}
+          onForgotPassword={() => {
+            setMessage('');
+            setLoginNotice('');
+            setScreen('forgotPassword');
+          }}
         />
       );
     }
@@ -1346,7 +1414,13 @@ const adminRequestDeletionForExtra = async (userId: string) => {
 
     // ----- Hamburger menu items for the current screen -----
   const menuItems: MenuItem[] = [];
-
+  
+  // Everyone: change password
+  menuItems.push({
+    label: 'Change Password',
+    disabled: screen === 'changePassword',
+    onPress: () => setScreen('changePassword'),
+  });
  
   // Coordinators: deletion requests live in the menu (they're only needed occasionally)
   if (role === 'ADMIN') {
@@ -1449,7 +1523,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
       <View style={{ flex: 1 }}>
         {renderScreen()}
 
-        {screen !== 'login' && (
+        {screen !== 'login' && screen !== 'forgotPassword' && (
           <HeaderMenu
             isHome={screen === 'home'}
             onGoHome={() => setScreen('home')}

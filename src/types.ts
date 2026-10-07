@@ -15,7 +15,9 @@ export type Screen =
   | 'bulkCreateShootDays'
   | 'deletionRequests'
   | 'productionRequests'
-  | 'attendance';
+  | 'attendance'
+  | 'forgotPassword'
+  | 'changePassword';
 
 export type Role = 'ADMIN' | 'EXTRA';
 

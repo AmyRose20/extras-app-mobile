@@ -8,6 +8,8 @@ type Props = {
   setPassword: (value: string) => void;
   message: string;
   onLogin: () => void;
+  notice: string; // friendly green message, e.g. after a password reset
+  onForgotPassword: () => void;
 };
 
 const IMAGE_ASPECT = 1746 / 901;
@@ -25,7 +27,7 @@ function getCardTop(boxWidth: number, boxHeight: number): number {
   }
 }
 
-function LoginScreen({ email, setEmail, password, setPassword, message, onLogin }: Props) {
+function LoginScreen({ email, setEmail, password, setPassword, message, onLogin, notice, onForgotPassword }: Props) {
   const [box, setBox] = useState<{ width: number; height: number } | null>(null);
 
   function handleLayout(e: LayoutChangeEvent) {
@@ -68,7 +70,15 @@ function LoginScreen({ email, setEmail, password, setPassword, message, onLogin 
               <Text style={loginStyles.buttonText}>Log In</Text>
             </TouchableOpacity>
 
-            <Text style={loginStyles.errorText}>{message || ' '}</Text>
+            {notice && !message ? (
+              <Text style={loginStyles.noticeText}>{notice}</Text>
+            ) : (
+              <Text style={loginStyles.errorText}>{message || ' '}</Text>
+            )}
+
+            <TouchableOpacity onPress={onForgotPassword}>
+              <Text style={loginStyles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -84,36 +94,36 @@ const loginStyles = StyleSheet.create({
   },
   cardWrapper: {
     position: 'absolute',
-    bottom: 24,
     left: 20,
     right: 20,
+    // no "bottom": the card is only as tall as what's inside it
   },
   card: {
-    flex: 1,
     backgroundColor: 'rgba(20,18,28,0.55)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    padding: 22,
+    padding: 18,
   },
   input: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 14,
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 22,
+    paddingVertical: 11,
     color: '#fff',
-    fontSize: 16,
-    marginBottom: 16,
+    fontSize: 15,
+    marginBottom: 10,
     width: '100%',
   },
   button: {
     backgroundColor: '#d99c4a',
-    borderRadius: 14,
-    paddingVertical: 26,
+    borderRadius: 12,
+    paddingVertical: 12,
     alignItems: 'center',
     width: '100%',
+    marginTop: 4,
   },
   buttonText: {
     color: '#1a1330',
@@ -123,9 +133,24 @@ const loginStyles = StyleSheet.create({
   },
   errorText: {
     color: '#ff9d9d',
-    fontSize: 16,
+    fontSize: 14,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 10,
+    minHeight: 18,
+  },
+  noticeText: {
+    color: '#8fd9a8',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 10,
+    minHeight: 18,
+  },
+  forgotText: {
+    color: '#d99c4a',
+    fontSize: 14,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    marginTop: 6,
   },
 });
 
