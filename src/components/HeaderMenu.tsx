@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { spacing } from '../styles';
+import { colors, spacing } from '../theme';
 import Badge from './Badge';
 
 // One extra option in the menu (e.g. "Remove from production")
@@ -99,7 +99,7 @@ const localStyles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 8,
-    backgroundColor: 'rgba(12,10,22,0.55)',
+    backgroundColor: colors.glass,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
@@ -109,7 +109,7 @@ const localStyles = StyleSheet.create({
     width: 16,
     height: 2,
     borderRadius: 2,
-    backgroundColor: '#fff',
+    backgroundColor: colors.text,
     marginVertical: 1.5,
   },
   dropdown: {
@@ -117,9 +117,9 @@ const localStyles = StyleSheet.create({
     top: 40,
     right: 0,
     width: 210,
-    backgroundColor: '#241d3d',
+    backgroundColor: colors.menuBackground,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: colors.glassBorder,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -135,18 +135,18 @@ const localStyles = StyleSheet.create({
     top: 0,
     right: 0,
     marginLeft: 8,
-    borderColor: '#241d3d', // ring matches the menu background
+    borderColor: colors.menuBackground, // ring matches the menu background
   },
   dropdownText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.text,
   },
   disabledText: {
     color: 'rgba(255,255,255,0.35)',
   },
   dangerText: {
-    color: '#ff9d9d',
+    color: colors.error,
   },
   divider: {
     height: 1,

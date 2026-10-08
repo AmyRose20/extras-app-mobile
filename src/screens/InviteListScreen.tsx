@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet, RefreshControl } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { Text, TouchableOpacity, View, StyleSheet, RefreshControl } from 'react-native';
 import * as callRequestsApi from '../api/callRequestsApi';
 import { errorMessage } from '../api/client';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GhostButton from '../components/GhostButton';
+import { colors, text } from '../theme';
 
 type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
 
@@ -67,89 +70,51 @@ function InviteListScreen({ token, callRequestId, status, onBack, onSelectExtra 
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={inviteListStyles.container}
+    <ScreenBackground
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />
+      }
     >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={inviteListStyles.scrollContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d99c4a" colors={['#d99c4a']} />
-          }
-        >
-          <Text style={inviteListStyles.title}>{STATUS_LABELS[status]}</Text>
+      <Text style={text.title}>{STATUS_LABELS[status]}</Text>
 
-          {loading ? <Text style={inviteListStyles.message}>Loading...</Text> : null}
+      {loading ? <Text style={text.message}>Loading...</Text> : null}
 
-          {!loading && invites.length === 0 ? (
-            <Text style={inviteListStyles.message}>No extras with this status yet.</Text>
-          ) : null}
+      {!loading && invites.length === 0 ? (
+        <Text style={text.message}>No extras with this status yet.</Text>
+      ) : null}
 
-          {!loading &&
-            invites.map((invite) => (
-              <TouchableOpacity
-                key={invite.extraProfileId}
-                style={inviteListStyles.card}
-                onPress={() => onSelectExtra(invite.extraProfileId)}
-              >
-                <View style={inviteListStyles.nameRow}>
-                  <Text style={inviteListStyles.cardTitle}>{invite.name}</Text>
-                  {!invite.hasSmartphone ? <Text style={inviteListStyles.emailTag}>Email</Text> : null}
-                </View>
-              </TouchableOpacity>
-            ))}
-
-          {message ? <Text style={inviteListStyles.message}>{message}</Text> : null}
-
-          <TouchableOpacity style={inviteListStyles.buttonGhost} onPress={onBack}>
-            <Text style={inviteListStyles.buttonGhostText}>Back</Text>
+      {!loading &&
+        invites.map((invite) => (
+          <TouchableOpacity key={invite.extraProfileId} onPress={() => onSelectExtra(invite.extraProfileId)}>
+            <GlassCard style={inviteListStyles.card}>
+              <View style={inviteListStyles.nameRow}>
+                <Text style={inviteListStyles.name}>{invite.name}</Text>
+                {!invite.hasSmartphone ? <Text style={inviteListStyles.emailTag}>Email</Text> : null}
+              </View>
+            </GlassCard>
           </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+        ))}
+
+      {message ? <Text style={text.message}>{message}</Text> : null}
+
+      <GhostButton title="Back" onPress={onBack} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const inviteListStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
-  message: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 12,
-  },
   card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    padding: 16,
     marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
   },
   // Small pill next to extras without a smartphone (they get invites by email)
   emailTag: {
@@ -158,25 +123,11 @@ const inviteListStyles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#d99c4a',
-    color: '#d99c4a',
+    borderColor: colors.gold,
+    color: colors.gold,
     fontSize: 11,
     fontWeight: '700',
     overflow: 'hidden',
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });
 

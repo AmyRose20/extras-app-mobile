@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import LinearGradient from 'react-native-linear-gradient';
 import * as locationsApi from '../api/locationsApi';
 import * as shootDaysApi from '../api/shootDaysApi';
 import { ApiError, errorMessage } from '../api/client';
 import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
 import { Location } from '../types';
 import MapPinPicker, { Pin } from '../components/MapPinPicker';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GoldButton from '../components/GoldButton';
+import GhostButton from '../components/GhostButton';
+import TextField from '../components/TextField';
+import { colors, text } from '../theme';
 
 const OTHER = 'OTHER'; // dropdown value for "Other (enter address)"
 
@@ -183,16 +188,16 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
   };
 
   const handleAddDay = async () => {
-  const day = buildCurrentDay();
-  if (!day) return;
+    const day = buildCurrentDay();
+    if (!day) return;
 
-  const shouldSave = selectedLocationId === OTHER && saveForNextTime;
+    const shouldSave = selectedLocationId === OTHER && saveForNextTime;
 
-  setBatchDays((prev) => [...prev, day]);
-  resetForm();
-  setMessage('');
+    setBatchDays((prev) => [...prev, day]);
+    resetForm();
+    setMessage('');
 
-  if (shouldSave) {
+    if (shouldSave) {
       await saveLocation(day.location, day.locationAddress, day.latitude, day.longitude);
     }
   };
@@ -250,249 +255,220 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={bulkStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
+    <ScreenBackground>
+      <Text style={text.title}>Add Shoot Days</Text>
 
-        <ScrollView contentContainerStyle={bulkStyles.scrollContent} keyboardShouldPersistTaps="handled">
-          <Text style={bulkStyles.title}>Add Shoot Days</Text>
+      <Text style={text.label}>Production</Text>
+      <View style={bulkStyles.readOnlyBox}>
+        <Text style={bulkStyles.readOnlyText}>{productionName ?? '—'}</Text>
+      </View>
 
-          <Text style={bulkStyles.fieldLabel}>Production</Text>
-          <View style={bulkStyles.readOnlyBox}>
-            <Text style={bulkStyles.readOnlyText}>{productionName ?? '—'}</Text>
-          </View>
+      <Text style={[text.sectionHeading, bulkStyles.sectionGap]}>Add a Day</Text>
 
-          <Text style={bulkStyles.sectionHeading}>Add a Day</Text>
+      {/* Meeting point */}
+      <Text style={text.label}>Meeting point</Text>
+      <View style={bulkStyles.pickerWrapper}>
+        <Picker
+          selectedValue={selectedLocationId}
+          onValueChange={(value) => {
+            setSelectedLocationId(value);
+            setLocationError('');
+            setFormTouched(true);
+          }}
+          style={bulkStyles.picker}
+          dropdownIconColor={colors.text}
+        >
+          {locations.map((loc) => (
+            <Picker.Item key={loc.id} label={loc.name} value={loc.id} color={colors.onGold} />
+          ))}
+          <Picker.Item label="Other (enter address)" value={OTHER} color={colors.onGold} />
+        </Picker>
+      </View>
 
-          {/* Meeting point */}
-          <Text style={bulkStyles.fieldLabel}>Meeting point</Text>
-          <View style={bulkStyles.pickerWrapper}>
-            <Picker
-              selectedValue={selectedLocationId}
-              onValueChange={(value) => {
-                setSelectedLocationId(value);
-                setLocationError('');
-                setFormTouched(true);
-              }}
-              style={bulkStyles.picker}
-              dropdownIconColor="#fff"
-            >
-              {locations.map((loc) => (
-                <Picker.Item key={loc.id} label={loc.name} value={loc.id} color="#1a1330" />
-              ))}
-              <Picker.Item label="Other (enter address)" value={OTHER} color="#1a1330" />
-            </Picker>
-          </View>
+      {selectedLocationId === OTHER ? (
+        <>
+          <MapPinPicker
+            token={token}
+            pin={otherPin}
+            onPinChange={(p) => {
+              setOtherPin(p);
+              setFormTouched(true);
+              if (locationError) setLocationError('');
+            }}
+            onAddressFound={(address) => {
+              setOtherAddress(address);
+              // Until the coordinator types a name, use the first part of the address
+              if (!otherNameEdited) setOtherName(address.split(',')[0].trim());
+            }}
+            onNameFound={(name) => {
+              // A search result has a proper place name — prefer it (unless they've typed one)
+              if (!otherNameEdited) setOtherName(name);
+            }}
+          />
 
-                   {selectedLocationId === OTHER ? (
+          {/* Only shown once there's a pin (dropped on the map or picked from search) */}
+          {otherPin ? (
             <>
-              <MapPinPicker
-                token={token}
-                pin={otherPin}
-                onPinChange={(p) => {
-                  setOtherPin(p);
+              <Text style={bulkStyles.pinAddress}>📍 {otherAddress}</Text>
+
+              <Text style={text.label}>Name for extras</Text>
+              <TextField
+                style={bulkStyles.compactInput}
+                value={otherName}
+                onChangeText={(value) => {
+                  setOtherName(value);
+                  setOtherNameEdited(true);
                   setFormTouched(true);
                   if (locationError) setLocationError('');
                 }}
-                onAddressFound={(address) => {
-                  setOtherAddress(address);
-                  // Until the coordinator types a name, use the first part of the address
-                  if (!otherNameEdited) setOtherName(address.split(',')[0].trim());
-                }}
-                onNameFound={(name) => {
-                  // A search result has a proper place name — prefer it (unless they've typed one)
-                  if (!otherNameEdited) setOtherName(name);
-                }}
+                placeholder="e.g. Beach car park"
               />
 
-              {/* Only shown once there's a pin (dropped on the map or picked from search) */}
-              {otherPin ? (
-                <>
-                  <Text style={bulkStyles.pinAddress}>📍 {otherAddress}</Text>
-
-                  <Text style={bulkStyles.fieldLabel}>Name for extras</Text>
-                  <TextInput
-                    style={bulkStyles.input}
-                    value={otherName}
-                    onChangeText={(text) => {
-                      setOtherName(text);
-                      setOtherNameEdited(true);
-                      setFormTouched(true);
-                      if (locationError) setLocationError('');
-                    }}
-                    placeholder="e.g. Beach car park"
-                    placeholderTextColor="rgba(255,255,255,0.5)"
-                  />
-
-                  <TouchableOpacity
-                    style={bulkStyles.checkboxRow}
-                    onPress={() => setSaveForNextTime((prev) => !prev)}
-                  >
-                    <View style={[bulkStyles.checkbox, saveForNextTime && bulkStyles.checkboxChecked]}>
-                      {saveForNextTime ? <Text style={bulkStyles.checkmark}>✓</Text> : null}
-                    </View>
-                    <Text style={bulkStyles.checkboxLabel}>Save this location for next time</Text>
-                  </TouchableOpacity>
-                </>
-              ) : null}
-            </>
-          ) : (
-            <Text style={bulkStyles.hintText}>
-              {locations.find((l) => l.id === selectedLocationId)?.address ?? ''}
-            </Text>
-          )}
-          <View style={{ minHeight: 18 }}>
-            {locationError ? <Text style={bulkStyles.fieldError}>{locationError}</Text> : null}
-          </View>
-
-          {/* Date + call time */}
-          <Text style={bulkStyles.fieldLabel}>Date</Text>
-          <View style={{ minHeight: 18 }}>
-            {dateError ? <Text style={bulkStyles.fieldError}>{dateError}</Text> : null}
-          </View>
-          <TouchableOpacity style={bulkStyles.input} onPress={() => setShowDatePicker(true)}>
-            <Text style={bulkStyles.dateTimeText}>{formatToDDMMYYYY(currentDateTime)}</Text>
-          </TouchableOpacity>
-
-          <Text style={bulkStyles.fieldLabel}>Call time</Text>
-          <TouchableOpacity style={bulkStyles.input} onPress={() => setShowTimePicker(true)}>
-            <Text style={bulkStyles.dateTimeText}>{formatToHHMM(currentDateTime)}</Text>
-          </TouchableOpacity>
-
-          {/* Optional estimated wrap */}
-          <Text style={bulkStyles.fieldLabel}>Est. wrap time (optional)</Text>
-          {currentWrap ? (
-            <View style={bulkStyles.row}>
-              <TouchableOpacity style={[bulkStyles.input, { flex: 1, marginBottom: 0 }]} onPress={() => setShowWrapPicker(true)}>
-                <Text style={bulkStyles.dateTimeText}>
-                  {formatToHHMM(currentWrap)}
-                  {isNextDay(currentDateTime, currentWrap) ? '  (next day)' : ''}
-                </Text>
+              <TouchableOpacity style={bulkStyles.checkboxRow} onPress={() => setSaveForNextTime((prev) => !prev)}>
+                <View style={[bulkStyles.checkbox, saveForNextTime && bulkStyles.checkboxChecked]}>
+                  {saveForNextTime ? <Text style={bulkStyles.checkmark}>✓</Text> : null}
+                </View>
+                <Text style={bulkStyles.checkboxLabel}>Save this location for next time</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setWrapTime(null)}>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <Text style={bulkStyles.hintText}>{locations.find((l) => l.id === selectedLocationId)?.address ?? ''}</Text>
+      )}
+      <View style={bulkStyles.errorSpace}>
+        {locationError ? <Text style={bulkStyles.fieldError}>{locationError}</Text> : null}
+      </View>
+
+      {/* Date + call time */}
+      <Text style={text.label}>Date</Text>
+      <View style={bulkStyles.errorSpace}>
+        {dateError ? <Text style={bulkStyles.fieldError}>{dateError}</Text> : null}
+      </View>
+      <TouchableOpacity style={bulkStyles.fieldBox} onPress={() => setShowDatePicker(true)}>
+        <Text style={bulkStyles.dateTimeText}>{formatToDDMMYYYY(currentDateTime)}</Text>
+      </TouchableOpacity>
+
+      <Text style={text.label}>Call time</Text>
+      <TouchableOpacity style={bulkStyles.fieldBox} onPress={() => setShowTimePicker(true)}>
+        <Text style={bulkStyles.dateTimeText}>{formatToHHMM(currentDateTime)}</Text>
+      </TouchableOpacity>
+
+      {/* Optional estimated wrap */}
+      <Text style={text.label}>Est. wrap time (optional)</Text>
+      {currentWrap ? (
+        <View style={bulkStyles.row}>
+          <TouchableOpacity
+            style={[bulkStyles.fieldBox, { flex: 1, marginBottom: 0 }]}
+            onPress={() => setShowWrapPicker(true)}
+          >
+            <Text style={bulkStyles.dateTimeText}>
+              {formatToHHMM(currentWrap)}
+              {isNextDay(currentDateTime, currentWrap) ? '  (next day)' : ''}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setWrapTime(null)}>
+            <Text style={bulkStyles.removeText}>Remove</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity onPress={() => setShowWrapPicker(true)} style={{ marginBottom: 12 }}>
+          <Text style={bulkStyles.linkText}>+ Add est. wrap time</Text>
+        </TouchableOpacity>
+      )}
+
+      {showDatePicker ? (
+        <DateTimePicker
+          value={currentDateTime}
+          mode="date"
+          display="default"
+          themeVariant="dark"
+          minimumDate={new Date()}
+          onChange={handleDateChange}
+        />
+      ) : null}
+      {showTimePicker ? (
+        <DateTimePicker
+          value={currentDateTime}
+          mode="time"
+          display="default"
+          themeVariant="dark"
+          onChange={handleTimeChange}
+        />
+      ) : null}
+      {showWrapPicker ? (
+        <DateTimePicker
+          // start from the current wrap, or 10 hours after the call time
+          value={currentWrap ?? new Date(currentDateTime.getTime() + 10 * 60 * 60 * 1000)}
+          mode="time"
+          display="default"
+          themeVariant="dark"
+          onChange={handleWrapChange}
+        />
+      ) : null}
+
+      <GhostButton title="Add Another Day" onPress={handleAddDay} style={bulkStyles.addDayButton} />
+
+      {batchDays.length > 0 ? (
+        <>
+          <Text style={[text.sectionHeading, bulkStyles.sectionGap]}>Days in this batch ({batchDays.length})</Text>
+          {batchDays.map((day, index) => (
+            <GlassCard key={index} style={bulkStyles.card}>
+              <Text style={bulkStyles.cardTitle}>
+                {formatToDDMMYYYY(day.date)} · call {formatToHHMM(day.date)}
+                {day.estimatedWrapAt
+                  ? ` · wrap ~${formatToHHMM(day.estimatedWrapAt)}${isNextDay(day.date, day.estimatedWrapAt) ? ' (+1)' : ''}`
+                  : ''}
+              </Text>
+              <Text style={bulkStyles.cardDetail}>{day.location}</Text>
+              <Text style={bulkStyles.cardAddress}>{day.locationAddress}</Text>
+              <TouchableOpacity onPress={() => handleRemoveDay(index)}>
                 <Text style={bulkStyles.removeText}>Remove</Text>
               </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity onPress={() => setShowWrapPicker(true)} style={{ marginBottom: 12 }}>
-              <Text style={bulkStyles.linkText}>+ Add est. wrap time</Text>
-            </TouchableOpacity>
-          )}
+            </GlassCard>
+          ))}
+        </>
+      ) : null}
 
-          {showDatePicker ? (
-            <DateTimePicker value={currentDateTime} mode="date" display="default" themeVariant="dark" minimumDate={new Date()} onChange={handleDateChange} />
-          ) : null}
-          {showTimePicker ? (
-            <DateTimePicker value={currentDateTime} mode="time" display="default" themeVariant="dark" onChange={handleTimeChange} />
-          ) : null}
-          {showWrapPicker ? (
-            <DateTimePicker
-              // start from the current wrap, or 10 hours after the call time
-              value={currentWrap ?? new Date(currentDateTime.getTime() + 10 * 60 * 60 * 1000)}
-              mode="time"
-              display="default"
-              themeVariant="dark"
-              onChange={handleWrapChange}
-            />
-          ) : null}
+      {message ? <Text style={text.message}>{message}</Text> : null}
 
-          <TouchableOpacity style={[bulkStyles.buttonGhost, { marginTop: 12 }]} onPress={handleAddDay}>
-            <Text style={bulkStyles.buttonGhostText}>Add Another Day</Text>
-          </TouchableOpacity>
+      <GoldButton
+        title={totalToCreate > 1 ? `Create All (${totalToCreate})` : 'Create Shoot Day'}
+        loadingTitle="Creating..."
+        loading={submitting}
+        onPress={handleSubmitAll}
+        style={bulkStyles.createButton}
+      />
 
-          {batchDays.length > 0 ? (
-            <>
-              <Text style={bulkStyles.sectionHeading}>Days in this batch ({batchDays.length})</Text>
-              {batchDays.map((day, index) => (
-                <View key={index} style={bulkStyles.card}>
-                  <Text style={bulkStyles.cardTitle}>
-                    {formatToDDMMYYYY(day.date)} · call {formatToHHMM(day.date)}
-                    {day.estimatedWrapAt
-                      ? ` · wrap ~${formatToHHMM(day.estimatedWrapAt)}${isNextDay(day.date, day.estimatedWrapAt) ? ' (+1)' : ''}`
-                      : ''}
-                  </Text>
-                  <Text style={bulkStyles.cardDetail}>{day.location}</Text>
-                  <Text style={bulkStyles.cardAddress}>{day.locationAddress}</Text>
-                  <TouchableOpacity onPress={() => handleRemoveDay(index)}>
-                    <Text style={bulkStyles.removeText}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </>
-          ) : null}
-
-          {message ? <Text style={bulkStyles.message}>{message}</Text> : null}
-
-          <TouchableOpacity
-            style={[bulkStyles.button, submitting && { opacity: 0.6 }]}
-            onPress={handleSubmitAll}
-            disabled={submitting}
-          >
-            <Text style={bulkStyles.buttonText}>
-              {submitting
-                ? 'Creating...'
-                : totalToCreate > 1
-                ? `Create All (${totalToCreate})`
-                : 'Create Shoot Day'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={bulkStyles.buttonGhost} onPress={onBack}>
-            <Text style={bulkStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      <GhostButton title="Back" onPress={onBack} style={bulkStyles.backButton} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const bulkStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
-    marginBottom: 6,
-  },
-  sectionHeading: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    color: 'rgba(255,255,255,0.72)',
+  sectionGap: {
     marginTop: 18,
-    marginBottom: 10,
   },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+  // Slightly smaller than the normal TextField
+  compactInput: {
+    paddingVertical: 12,
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  // Looks like an input, but tapping it opens a date/time picker
+  fieldBox: {
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: colors.inputBorder,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#fff',
-    fontSize: 14,
     marginBottom: 12,
+  },
+  dateTimeText: {
+    color: colors.text,
+    fontSize: 14,
   },
   readOnlyBox: {
     backgroundColor: 'rgba(255,255,255,0.04)',
@@ -504,20 +480,20 @@ const bulkStyles = StyleSheet.create({
     marginBottom: 12,
   },
   readOnlyText: {
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textSoft,
     fontSize: 14,
     fontWeight: '600',
   },
   pickerWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: colors.inputBorder,
     borderRadius: 12,
     marginBottom: 8,
     overflow: 'hidden',
   },
   picker: {
-    color: '#fff',
+    color: colors.text,
   },
   hintText: {
     fontSize: 12,
@@ -530,7 +506,7 @@ const bulkStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.7)',
     marginBottom: 10,
   },
-    checkboxRow: {
+  checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
@@ -546,17 +522,25 @@ const bulkStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#d99c4a',
-    borderColor: '#d99c4a',
+    backgroundColor: colors.gold,
+    borderColor: colors.gold,
   },
   checkmark: {
-    color: '#1a1330',
+    color: colors.onGold,
     fontSize: 13,
     fontWeight: '700',
   },
   checkboxLabel: {
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textSoft,
     fontSize: 13,
+  },
+  errorSpace: {
+    minHeight: 18, // keeps the space so the form doesn't jump when an error appears
+  },
+  fieldError: {
+    color: colors.error,
+    fontSize: 12,
+    marginBottom: 6,
   },
   row: {
     flexDirection: 'row',
@@ -565,41 +549,26 @@ const bulkStyles = StyleSheet.create({
     marginBottom: 12,
   },
   linkText: {
-    color: '#d99c4a',
+    color: colors.gold,
     fontSize: 14,
     fontWeight: '600',
   },
-  dateTimeText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  fieldError: {
-    color: '#ff9d9d',
-    fontSize: 12,
-    marginBottom: 6,
-  },
-  message: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 12,
+  addDayButton: {
+    marginTop: 12,
+    marginBottom: 10,
   },
   card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    padding: 16,
     marginBottom: 12,
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginBottom: 4,
   },
   cardDetail: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textSoft,
   },
   cardAddress: {
     fontSize: 12,
@@ -607,38 +576,17 @@ const bulkStyles = StyleSheet.create({
     marginBottom: 8,
   },
   removeText: {
-    color: '#ff9d9d',
+    color: colors.error,
     fontSize: 13,
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
-  button: {
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
+  createButton: {
     marginTop: 14,
+  },
+  backButton: {
+    marginTop: 0,
     marginBottom: 10,
-  },
-  buttonText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
-    letterSpacing: 0.3,
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });
 

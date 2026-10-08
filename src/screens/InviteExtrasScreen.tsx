@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet, RefreshControl } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { Text, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import * as signupInvitesApi from '../api/signupInvitesApi';
 import { errorMessage } from '../api/client';
 import { SignupInvite, SignupInviteStatus } from '../types';
 import { formatToDDMMYYYY } from '../dateUtils';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GoldButton from '../components/GoldButton';
+import GhostButton from '../components/GhostButton';
+import TextField from '../components/TextField';
+import { colors, text } from '../theme';
 
 // Coordinators email sign-up links to new extras (Phase 3 Part 11).
 // Whoever signs up through a link is added to this production straight away.
@@ -23,10 +28,10 @@ const STATUS_LABELS: Record<SignupInviteStatus, string> = {
 };
 
 const STATUS_COLOURS: Record<SignupInviteStatus, string> = {
-  SENT: '#d99c4a',      // gold: waiting
-  SIGNED_UP: '#86efac', // green: done
-  ADDED: '#86efac',
-  EXPIRED: '#ff9d9d',   // red: needs sending again
+  SENT: colors.gold,         // gold: waiting
+  SIGNED_UP: colors.success, // green: done
+  ADDED: colors.success,
+  EXPIRED: colors.error,     // red: needs sending again
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -102,184 +107,112 @@ function InviteExtrasScreen({ token, productionName, onBack }: Props) {
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={inviteStyles.container}
+    <ScreenBackground
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.gold} colors={[colors.gold]} />
+      }
     >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={inviteStyles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#d99c4a" colors={['#d99c4a']} />
-          }
-        >
-          <Text style={inviteStyles.title}>Invite Extras</Text>
+      <Text style={text.title}>Invite Extras</Text>
 
-          <View style={inviteStyles.card}>
-            <Text style={inviteStyles.label}>Email address</Text>
-            <TextInput
-              style={inviteStyles.input}
-              placeholder="name@example.com"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <Text style={inviteStyles.fieldError}>{emailError || ' '}</Text>
-            {successMessage ? <Text style={inviteStyles.successText}>{successMessage}</Text> : null}
+      <GlassCard style={inviteStyles.card}>
+        <Text style={text.label}>Email address</Text>
+        <TextField
+          placeholder="name@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Text style={[text.fieldError, inviteStyles.fieldError]}>{emailError || ' '}</Text>
+        {successMessage ? <Text style={inviteStyles.successText}>{successMessage}</Text> : null}
 
-            <Text style={inviteStyles.note}>
-              They'll get an email with a sign-up link for {production}. It works once and lasts 7 days.
-              If they already have an account, they're added to {production} straight away.
-            </Text>
+        <Text style={inviteStyles.note}>
+          They'll get an email with a sign-up link for {production}. It works once and lasts 7 days.
+          If they already have an account, they're added to {production} straight away.
+        </Text>
 
-            <TouchableOpacity
-              style={[inviteStyles.button, sending && { opacity: 0.6 }]}
-              onPress={() => sendInvite(email)}
-              disabled={sending}
-            >
-              <Text style={inviteStyles.buttonText}>{sending ? 'Sending...' : 'Send invite'}</Text>
+        <GoldButton
+          title="Send invite"
+          loadingTitle="Sending..."
+          loading={sending}
+          onPress={() => sendInvite(email)}
+          style={inviteStyles.lastInCard}
+        />
+      </GlassCard>
+
+      <Text style={inviteStyles.sectionTitle}>Sent invites</Text>
+
+      {loading ? <Text style={text.message}>Loading...</Text> : null}
+      {!loading && invites.length === 0 && !listMessage ? (
+        <Text style={text.message}>No invites sent yet.</Text>
+      ) : null}
+      {listMessage ? <Text style={text.message}>{listMessage}</Text> : null}
+
+      {invites.map((invite) => (
+        <GlassCard key={invite.id} style={inviteStyles.inviteCard}>
+          <Text style={inviteStyles.inviteEmail}>{invite.email}</Text>
+          {invite.name ? <Text style={inviteStyles.inviteName}>{invite.name}</Text> : null}
+          <Text style={[inviteStyles.inviteStatus, { color: STATUS_COLOURS[invite.status] }]}>
+            {STATUS_LABELS[invite.status]}
+          </Text>
+          <Text style={inviteStyles.inviteDate}>{dateLine(invite)}</Text>
+
+          {invite.status === 'SENT' || invite.status === 'EXPIRED' ? (
+            <TouchableOpacity onPress={() => sendInvite(invite.email)} disabled={sending}>
+              <Text style={[text.link, inviteStyles.sendAgain]}>Send again</Text>
             </TouchableOpacity>
-          </View>
-
-          <Text style={inviteStyles.sectionTitle}>Sent invites</Text>
-
-          {loading ? <Text style={inviteStyles.message}>Loading...</Text> : null}
-          {!loading && invites.length === 0 && !listMessage ? (
-            <Text style={inviteStyles.message}>No invites sent yet.</Text>
           ) : null}
-          {listMessage ? <Text style={inviteStyles.message}>{listMessage}</Text> : null}
+        </GlassCard>
+      ))}
 
-          {invites.map((invite) => (
-            <View key={invite.id} style={inviteStyles.inviteCard}>
-              <Text style={inviteStyles.inviteEmail}>{invite.email}</Text>
-              {invite.name ? <Text style={inviteStyles.inviteName}>{invite.name}</Text> : null}
-              <Text style={[inviteStyles.inviteStatus, { color: STATUS_COLOURS[invite.status] }]}>
-                {STATUS_LABELS[invite.status]}
-              </Text>
-              <Text style={inviteStyles.inviteDate}>{dateLine(invite)}</Text>
-
-              {invite.status === 'SENT' || invite.status === 'EXPIRED' ? (
-                <TouchableOpacity onPress={() => sendInvite(invite.email)} disabled={sending}>
-                  <Text style={inviteStyles.linkText}>Send again</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ))}
-
-          <TouchableOpacity style={inviteStyles.buttonGhost} onPress={onBack}>
-            <Text style={inviteStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      <GhostButton title="Back" onPress={onBack} style={inviteStyles.backButton} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const inviteStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
   card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
     padding: 18,
     marginBottom: 20,
   },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 8,
-  },
   fieldError: {
-    color: '#ff9d9d',
-    fontSize: 12,
-    minHeight: 16,
     marginBottom: 4,
   },
   successText: {
-    color: '#86efac',
+    color: colors.success,
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 8,
   },
   note: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.72)',
+    color: colors.textMuted,
     lineHeight: 17,
     marginBottom: 14,
   },
-  button: {
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
+  lastInCard: {
+    marginBottom: 0,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginBottom: 10,
   },
-  message: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 12,
-  },
   inviteCard: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
     padding: 14,
     marginBottom: 10,
   },
   inviteEmail: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
   },
   inviteName: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textSoft,
     marginTop: 2,
   },
   inviteStatus: {
@@ -292,26 +225,11 @@ const inviteStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     marginTop: 2,
   },
-  linkText: {
-    fontSize: 13,
-    color: '#d99c4a',
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+  sendAgain: {
     marginTop: 8,
   },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
+  backButton: {
     marginTop: 10,
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });
 

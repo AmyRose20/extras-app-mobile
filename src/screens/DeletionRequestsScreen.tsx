@@ -1,7 +1,11 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { DeletionRequestSummary, DialogConfig } from '../types';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GhostButton from '../components/GhostButton';
+import DetailRow from '../components/DetailRow';
+import { colors, text } from '../theme';
 
 type Props = {
   requests: DeletionRequestSummary[];
@@ -34,100 +38,53 @@ function DeletionRequestsScreen({ requests, loading, message, onApprove, onDeny,
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={deletionStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={deletionStyles.scrollContent}>
-          <Text style={deletionStyles.title}>Deletion Requests</Text>
+    <ScreenBackground>
+      <Text style={text.title}>Deletion Requests</Text>
 
-          {loading ? (
-            <Text style={deletionStyles.message}>Loading...</Text>
-          ) : requests.length === 0 ? (
-            <Text style={deletionStyles.message}>No pending deletion requests.</Text>
-          ) : (
-            requests.map((request) => (
-              <View key={request.id} style={deletionStyles.card}>
-                <Text style={deletionStyles.detailRow}><Text style={deletionStyles.fieldLabelInline}>Name: </Text>{request.name}</Text>
-                <Text style={deletionStyles.detailRow}><Text style={deletionStyles.fieldLabelInline}>Email: </Text>{request.email}</Text>
-                <Text style={deletionStyles.detailRow}><Text style={deletionStyles.fieldLabelInline}>Requested by: </Text>{request.deletionRequestedBy === 'ADMIN' ? 'Admin' : 'Extra (self)'}</Text>
-                <Text style={deletionStyles.detailRow}><Text style={deletionStyles.fieldLabelInline}>Requested at: </Text>{new Date(request.deletionRequestedAt).toLocaleString()}</Text>
-                {request.deletionReason ? (
-                  <Text style={deletionStyles.detailRow}><Text style={deletionStyles.fieldLabelInline}>Reason: </Text>{request.deletionReason}</Text>
-                ) : null}
+      {loading ? (
+        <Text style={text.message}>Loading...</Text>
+      ) : requests.length === 0 ? (
+        <Text style={text.message}>No pending deletion requests.</Text>
+      ) : (
+        requests.map((request) => (
+          <GlassCard key={request.id} style={deletionStyles.card}>
+            <DetailRow label="Name">{request.name}</DetailRow>
+            <DetailRow label="Email">{request.email}</DetailRow>
+            <DetailRow label="Requested by">
+              {request.deletionRequestedBy === 'ADMIN' ? 'Admin' : 'Extra (self)'}
+            </DetailRow>
+            <DetailRow label="Requested at">{new Date(request.deletionRequestedAt).toLocaleString()}</DetailRow>
+            {request.deletionReason ? <DetailRow label="Reason">{request.deletionReason}</DetailRow> : null}
 
-                <View style={deletionStyles.buttonRow}>
-                  <TouchableOpacity
-                    style={[deletionStyles.smallButton, deletionStyles.approveButton]}
-                    onPress={() => confirmApprove(request)}
-                  >
-                    <Text style={deletionStyles.approveButtonText}>Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[deletionStyles.smallButton, deletionStyles.denyButton]}
-                    onPress={() => confirmDeny(request)}
-                  >
-                    <Text style={deletionStyles.denyButtonText}>Deny</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
-          )}
+            <View style={deletionStyles.buttonRow}>
+              <TouchableOpacity
+                style={[deletionStyles.smallButton, deletionStyles.approveButton]}
+                onPress={() => confirmApprove(request)}
+              >
+                <Text style={deletionStyles.approveButtonText}>Approve</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[deletionStyles.smallButton, deletionStyles.denyButton]}
+                onPress={() => confirmDeny(request)}
+              >
+                <Text style={deletionStyles.denyButtonText}>Deny</Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        ))
+      )}
 
-          {message ? <Text style={deletionStyles.message}>{message}</Text> : null}
+      {message ? <Text style={text.message}>{message}</Text> : null}
 
-          <TouchableOpacity style={deletionStyles.buttonGhost} onPress={onBack}>
-            <Text style={deletionStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      <GhostButton title="Back" onPress={onBack} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const deletionStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
-  message: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 12,
-  },
   card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    padding: 16,
     marginBottom: 14,
-  },
-  detailRow: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 8,
-  },
-  fieldLabelInline: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -154,23 +111,9 @@ const deletionStyles = StyleSheet.create({
     backgroundColor: '#8fd9a8',
   },
   denyButtonText: {
-    color: '#1a1330',
+    color: colors.onGold,
     fontWeight: '700',
     fontSize: 13,
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });
 

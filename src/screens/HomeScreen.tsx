@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
-import LinearGradient from 'react-native-linear-gradient';
 import { Role, ShootDaySummary, Invite } from '../types';
 import { formatToCalendarKey } from '../dateUtils';
 import { getApp } from '@react-native-firebase/app';
@@ -13,6 +12,10 @@ import {
 } from '@react-native-firebase/messaging';
 import * as profilesApi from '../api/profilesApi';
 import Badge from '../components/Badge';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GoldButton from '../components/GoldButton';
+import { colors, text } from '../theme';
 
 type Props = {
   userName: string;
@@ -91,124 +94,62 @@ function HomeScreen({ userName, role, token, shootDays, invites, onNavigate, onS
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={homeStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={homeStyles.scrollContent}>
-          <Text style={homeStyles.title}>Welcome, {userName}</Text>
+    <ScreenBackground>
+      <Text style={text.title}>Welcome, {userName}</Text>
 
-          <View style={homeStyles.calendarCard}>
-            <Calendar
-              markedDates={markedDates}
-              onDayPress={handleDayPress}
-              theme={{
-                calendarBackground: 'transparent',
-                textSectionTitleColor: 'rgba(255,255,255,0.72)',
-                dayTextColor: '#fff',
-                textDisabledColor: 'rgba(255,255,255,0.25)',
-                monthTextColor: '#fff',
-                todayTextColor: '#d99c4a',
-                arrowColor: '#d99c4a',
-                selectedDayBackgroundColor: '#d99c4a',
-                selectedDayTextColor: '#1a1330',
-                dotColor: '#d99c4a',
-                selectedDotColor: '#1a1330',
-              }}
-            />
-          </View>
+      <GlassCard style={homeStyles.calendarCard}>
+        <Calendar
+          markedDates={markedDates}
+          onDayPress={handleDayPress}
+          theme={{
+            calendarBackground: 'transparent',
+            textSectionTitleColor: colors.textMuted,
+            dayTextColor: colors.text,
+            textDisabledColor: 'rgba(255,255,255,0.25)',
+            monthTextColor: colors.text,
+            todayTextColor: colors.gold,
+            arrowColor: colors.gold,
+            selectedDayBackgroundColor: colors.gold,
+            selectedDayTextColor: colors.onGold,
+            dotColor: colors.gold,
+            selectedDotColor: colors.onGold,
+          }}
+        />
+      </GlassCard>
 
-          {/* Extras see profile/invites options; admins see coordinator options.
-              This is what makes Amy2 and extra2 see different Home screens. */}
-          {role === 'EXTRA' ? (
-            <>
-              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('profile')}>
-                <Text style={homeStyles.buttonText}>My Profile</Text>
-              </TouchableOpacity>
+      {/* Extras see profile/invites options; admins see coordinator options.
+          This is what makes Amy2 and extra2 see different Home screens. */}
+      {role === 'EXTRA' ? (
+        <>
+          <GoldButton title="My Profile" onPress={() => onNavigate('profile')} />
+          <GoldButton title="My Invites" onPress={() => onNavigate('invites')}>
+            <Badge count={invitesBadge} />
+          </GoldButton>
+        </>
+      ) : (
+        <>
+          <Text style={[text.sectionHeading, homeStyles.sectionHeading]}>Schedule</Text>
+          <GoldButton title="Add Shoot Days" onPress={() => onNavigate('bulkCreateShootDays')} />
+          <GoldButton title="Shoot Days" onPress={() => onNavigate('shootDaysList')} />
 
-              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('invites')}>
-                <Text style={homeStyles.buttonText}>My Invites</Text>
-                <Badge count={invitesBadge} />
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text style={homeStyles.sectionHeading}>Schedule</Text>
-
-              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('bulkCreateShootDays')}>
-                <Text style={homeStyles.buttonText}>Add Shoot Days</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('shootDaysList')}>
-                <Text style={homeStyles.buttonText}>Shoot Days</Text>
-              </TouchableOpacity>
-
-              <Text style={homeStyles.sectionHeading}>Casting</Text>
-
-              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('createCallRequest')}>
-                <Text style={homeStyles.buttonText}>Create Call Request</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={homeStyles.button} onPress={() => onNavigate('extrasList')}>
-                <Text style={homeStyles.buttonText}>View Extra Profiles</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+          <Text style={[text.sectionHeading, homeStyles.sectionHeading]}>Casting</Text>
+          <GoldButton title="Create Call Request" onPress={() => onNavigate('createCallRequest')} />
+          <GoldButton title="View Extra Profiles" onPress={() => onNavigate('extrasList')} />
+        </>
+      )}
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const homeStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
   calendarCard: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
     padding: 8,
     marginBottom: 20,
     overflow: 'hidden',
   },
   sectionHeading: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    color: 'rgba(255,255,255,0.72)',
     marginTop: 8,
-    marginBottom: 10,
-  },
-  button: {
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  buttonText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
-    letterSpacing: 0.3,
   },
 });
 
@@ -223,4 +164,5 @@ the coordinator buttons instead.
  'ADMIN' | 'EXTRA', and now any file can import and reuse that exact definition instead of retyping it.
 3. We swapped the outer SafeAreaView for a SafeAreaView + ScrollView pair. Now that there's a
  calendar sitting above the buttons, the content is tall enough that it could get cut off on
- smaller screens — the ScrollView means it just scrolls instead. */
+ smaller screens — the ScrollView means it just scrolls instead. (Since Part 12b, that
+ SafeAreaView + ScrollView pair lives inside the shared ScreenBackground component.) */

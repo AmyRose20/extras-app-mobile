@@ -1,8 +1,12 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, Image, StyleSheet } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { Text, TouchableOpacity, View, Image, StyleSheet } from 'react-native';
 import { ProductionRequestSummary, DialogConfig } from '../types';
 import { formatToDDMMYYYY } from '../dateUtils';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GhostButton from '../components/GhostButton';
+import DetailRow from '../components/DetailRow';
+import { colors, text } from '../theme';
 
 type Props = {
   productionName: string | null; // the coordinator's production, used in the dialog text
@@ -57,114 +61,74 @@ function ProductionRequestsScreen({
       .join(' · ');
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={requestStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={requestStyles.scrollContent}>
-          <Text style={requestStyles.title}>Production Requests</Text>
-          <Text style={requestStyles.subtitle}>Extras asking to join {production}</Text>
+    <ScreenBackground>
+      <Text style={[text.title, requestStyles.title]}>Production Requests</Text>
+      <Text style={requestStyles.subtitle}>Extras asking to join {production}</Text>
 
-          {loading ? (
-            <Text style={requestStyles.message}>Loading...</Text>
-          ) : requests.length === 0 ? (
-            <Text style={requestStyles.message}>No pending requests.</Text>
-          ) : (
-            requests.map((request) => (
-              <View key={request.id} style={requestStyles.card}>
-                <View style={requestStyles.headerRow}>
-                  {request.facePhotoUrl ? (
-                    <Image source={{ uri: request.facePhotoUrl }} style={requestStyles.photo} />
-                  ) : (
-                    <View style={[requestStyles.photo, requestStyles.photoPlaceholder]} />
-                  )}
-                  <View style={{ flex: 1 }}>
-                    <Text style={requestStyles.name}>{request.name}</Text>
-                    <Text style={requestStyles.summary}>{summaryLine(request)}</Text>
-                  </View>
-                </View>
-
-                <Text style={requestStyles.detailRow}>
-                  <Text style={requestStyles.fieldLabelInline}>Skills: </Text>
-                  {request.skills.length > 0 ? request.skills.join(', ') : 'Not set'}
-                </Text>
-                <Text style={requestStyles.detailRow}>
-                  <Text style={requestStyles.fieldLabelInline}>Languages: </Text>
-                  {request.languages.length > 0 ? request.languages.join(', ') : 'Not set'}
-                </Text>
-                <Text style={requestStyles.detailRow}>
-                  <Text style={requestStyles.fieldLabelInline}>Already on: </Text>
-                  {request.currentProductions.length > 0 ? request.currentProductions.join(', ') : 'None'}
-                </Text>
-                <Text style={requestStyles.detailRow}>
-                  <Text style={requestStyles.fieldLabelInline}>Requested: </Text>
-                  {formatToDDMMYYYY(request.requestedAt)}
-                </Text>
-
-                <View style={requestStyles.buttonRow}>
-                  <TouchableOpacity
-                    style={[requestStyles.smallButton, requestStyles.approveButton]}
-                    onPress={() => confirmApprove(request)}
-                  >
-                    <Text style={requestStyles.approveButtonText}>Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[requestStyles.smallButton, requestStyles.denyButton]}
-                    onPress={() => confirmDeny(request)}
-                  >
-                    <Text style={requestStyles.denyButtonText}>Deny</Text>
-                  </TouchableOpacity>
-                </View>
+      {loading ? (
+        <Text style={text.message}>Loading...</Text>
+      ) : requests.length === 0 ? (
+        <Text style={text.message}>No pending requests.</Text>
+      ) : (
+        requests.map((request) => (
+          <GlassCard key={request.id} style={requestStyles.card}>
+            <View style={requestStyles.headerRow}>
+              {request.facePhotoUrl ? (
+                <Image source={{ uri: request.facePhotoUrl }} style={requestStyles.photo} />
+              ) : (
+                <View style={[requestStyles.photo, requestStyles.photoPlaceholder]} />
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={requestStyles.name}>{request.name}</Text>
+                <Text style={requestStyles.summary}>{summaryLine(request)}</Text>
               </View>
-            ))
-          )}
+            </View>
 
-          {message ? <Text style={requestStyles.message}>{message}</Text> : null}
+            <DetailRow label="Skills">{request.skills.length > 0 ? request.skills.join(', ') : 'Not set'}</DetailRow>
+            <DetailRow label="Languages">
+              {request.languages.length > 0 ? request.languages.join(', ') : 'Not set'}
+            </DetailRow>
+            <DetailRow label="Already on">
+              {request.currentProductions.length > 0 ? request.currentProductions.join(', ') : 'None'}
+            </DetailRow>
+            <DetailRow label="Requested">{formatToDDMMYYYY(request.requestedAt)}</DetailRow>
 
-          <TouchableOpacity style={requestStyles.buttonGhost} onPress={onBack}>
-            <Text style={requestStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+            <View style={requestStyles.buttonRow}>
+              <TouchableOpacity
+                style={[requestStyles.smallButton, requestStyles.approveButton]}
+                onPress={() => confirmApprove(request)}
+              >
+                <Text style={requestStyles.approveButtonText}>Approve</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[requestStyles.smallButton, requestStyles.denyButton]}
+                onPress={() => confirmDeny(request)}
+              >
+                <Text style={requestStyles.denyButtonText}>Deny</Text>
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        ))
+      )}
+
+      {message ? <Text style={text.message}>{message}</Text> : null}
+
+      <GhostButton title="Back" onPress={onBack} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const requestStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 4, // the subtitle sits close underneath
   },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.72)',
+    color: colors.textMuted,
     marginBottom: 16,
   },
-  message: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 12,
-  },
   card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    padding: 16,
     marginBottom: 14,
   },
   headerRow: {
@@ -181,29 +145,17 @@ const requestStyles = StyleSheet.create({
   },
   photoPlaceholder: {
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: colors.inputBorder,
   },
   name: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
   },
   summary: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.72)',
+    color: colors.textMuted,
     marginTop: 2,
-  },
-  detailRow: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 8,
-  },
-  fieldLabelInline: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -220,7 +172,7 @@ const requestStyles = StyleSheet.create({
     backgroundColor: '#8fd9a8',
   },
   approveButtonText: {
-    color: '#1a1330',
+    color: colors.onGold,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -230,23 +182,9 @@ const requestStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
   },
   denyButtonText: {
-    color: '#fff',
+    color: colors.text,
     fontWeight: '700',
     fontSize: 13,
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });
 

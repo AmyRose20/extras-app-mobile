@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import LinearGradient from 'react-native-linear-gradient';
 import * as locationsApi from '../api/locationsApi';
 import * as shootDaysApi from '../api/shootDaysApi';
 import * as callRequestsApi from '../api/callRequestsApi';
@@ -10,6 +9,14 @@ import { errorMessage } from '../api/client';
 import { ShootDayDetail, ShootDaySummary, CallRequestSummary, Location } from '../types';
 import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
 import MapPinPicker, { Pin } from '../components/MapPinPicker';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GoldButton from '../components/GoldButton';
+import GhostButton from '../components/GhostButton';
+import TextField from '../components/TextField';
+import DetailRow from '../components/DetailRow';
+import SavedPopup from '../components/SavedPopup';
+import { colors, text } from '../theme';
 
 const OTHER = 'OTHER'; // dropdown value for "Other (enter address)"
 
@@ -305,396 +312,357 @@ function ShootDayDetailScreen({
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={detailStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        {showSavedPopup ? (
-          <View style={detailStyles.savedPopup}>
-            <Text style={detailStyles.savedPopupText}>Saved!</Text>
-          </View>
-        ) : null}
+    <View style={detailStyles.fill}>
+      <ScreenBackground>
+        <Text style={text.title}>Shoot Day</Text>
 
-        <ScrollView contentContainerStyle={detailStyles.scrollContent} keyboardShouldPersistTaps="handled">
-          <Text style={detailStyles.title}>Shoot Day</Text>
+        {loading ? <Text style={text.message}>Loading...</Text> : null}
 
-          {loading ? <Text style={detailStyles.message}>Loading...</Text> : null}
+        {!loading && shootDay ? (
+          <>
+            <GlassCard>
+              <DetailRow label="Production">{shootDay.production.name}</DetailRow>
 
-          {!loading && shootDay ? (
-            <>
-              <View style={detailStyles.card}>
-                <Text style={detailStyles.detailRow}>
-                  <Text style={detailStyles.fieldLabelInline}>Production: </Text>
-                  {shootDay.production.name}
-                </Text>
+              {isEditing ? (
+                <>
+                  {/* ----- Meeting point ----- */}
+                  <Text style={[text.label, detailStyles.formLabel]}>Meeting point</Text>
+                  <View style={detailStyles.pickerWrapper}>
+                    <Picker
+                      selectedValue={selectedLocationId}
+                      onValueChange={(value) => {
+                        setSelectedLocationId(value);
+                        setLocationError('');
+                      }}
+                      style={detailStyles.picker}
+                      dropdownIconColor={colors.text}
+                    >
+                      {locations.map((loc) => (
+                        <Picker.Item key={loc.id} label={loc.name} value={loc.id} color={colors.onGold} />
+                      ))}
+                      <Picker.Item label="Other (enter address)" value={OTHER} color={colors.onGold} />
+                    </Picker>
+                  </View>
 
-                {isEditing ? (
-                  <>
-                    {/* ----- Meeting point ----- */}
-                    <Text style={detailStyles.fieldLabel}>Meeting point</Text>
-                    <View style={detailStyles.pickerWrapper}>
-                      <Picker
-                        selectedValue={selectedLocationId}
-                        onValueChange={(value) => {
-                          setSelectedLocationId(value);
-                          setLocationError('');
+                  {selectedLocationId === OTHER ? (
+                    <>
+                      <MapPinPicker
+                        token={token}
+                        pin={otherPin}
+                        onPinChange={(p) => {
+                          setOtherPin(p);
+                          if (locationError) setLocationError('');
                         }}
-                        style={detailStyles.picker}
-                        dropdownIconColor="#fff"
+                        onAddressFound={(address) => {
+                          setOtherAddress(address);
+                          if (!otherNameEdited) setOtherName(address.split(',')[0].trim());
+                        }}
+                        onNameFound={(name) => {
+                          if (!otherNameEdited) setOtherName(name);
+                        }}
+                      />
+
+                      {/* Shown once there's a pin, or if this shoot day already has an address */}
+                      {otherPin || otherAddress ? (
+                        <>
+                          <Text style={detailStyles.pinAddress}>📍 {otherAddress}</Text>
+
+                          <Text style={[text.label, detailStyles.formLabel]}>Name for extras</Text>
+                          <TextField
+                            style={detailStyles.compactInput}
+                            value={otherName}
+                            onChangeText={(value) => {
+                              setOtherName(value);
+                              setOtherNameEdited(true);
+                              if (locationError) setLocationError('');
+                            }}
+                            placeholder="e.g. Beach car park"
+                          />
+
+                          <TouchableOpacity
+                            style={detailStyles.checkboxRow}
+                            onPress={() => setSaveForNextTime((prev) => !prev)}
+                          >
+                            <View style={[detailStyles.checkbox, saveForNextTime && detailStyles.checkboxChecked]}>
+                              {saveForNextTime ? <Text style={detailStyles.checkmark}>✓</Text> : null}
+                            </View>
+                            <Text style={detailStyles.checkboxLabel}>Save this location for next time</Text>
+                          </TouchableOpacity>
+                        </>
+                      ) : null}
+                    </>
+                  ) : (
+                    <Text style={detailStyles.hintText}>
+                      {locations.find((l) => l.id === selectedLocationId)?.address ?? ''}
+                    </Text>
+                  )}
+                  <View style={detailStyles.errorSpace}>
+                    {locationError ? <Text style={detailStyles.fieldError}>{locationError}</Text> : null}
+                  </View>
+
+                  {/* ----- Date + call time ----- */}
+                  <Text style={[text.label, detailStyles.formLabel]}>Date</Text>
+                  <TouchableOpacity style={detailStyles.fieldBox} onPress={() => setShowDatePicker(true)}>
+                    <Text style={detailStyles.dateTimeText}>{formatToDDMMYYYY(editDateTime)}</Text>
+                  </TouchableOpacity>
+
+                  <Text style={[text.label, detailStyles.formLabel]}>Call time</Text>
+                  <TouchableOpacity style={detailStyles.fieldBox} onPress={() => setShowTimePicker(true)}>
+                    <Text style={detailStyles.dateTimeText}>{formatToHHMM(editDateTime)}</Text>
+                  </TouchableOpacity>
+
+                  {/* ----- Optional estimated wrap ----- */}
+                  <Text style={[text.label, detailStyles.formLabel]}>Est. wrap time (optional)</Text>
+                  {currentWrap ? (
+                    <View style={detailStyles.row}>
+                      <TouchableOpacity
+                        style={[detailStyles.fieldBox, { flex: 1, marginBottom: 0 }]}
+                        onPress={() => setShowWrapPicker(true)}
                       >
-                        {locations.map((loc) => (
-                          <Picker.Item key={loc.id} label={loc.name} value={loc.id} color="#1a1330" />
-                        ))}
-                        <Picker.Item label="Other (enter address)" value={OTHER} color="#1a1330" />
-                      </Picker>
+                        <Text style={detailStyles.dateTimeText}>
+                          {formatToHHMM(currentWrap)}
+                          {isNextDay(editDateTime, currentWrap) ? '  (next day)' : ''}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setWrapTime(null)}>
+                        <Text style={detailStyles.removeText}>Remove</Text>
+                      </TouchableOpacity>
                     </View>
+                  ) : (
+                    <TouchableOpacity onPress={() => setShowWrapPicker(true)} style={{ marginBottom: 12 }}>
+                      <Text style={detailStyles.addLinkText}>+ Add est. wrap time</Text>
+                    </TouchableOpacity>
+                  )}
 
-                    {selectedLocationId === OTHER ? (
-                      <>
-                        <MapPinPicker
-                          token={token}
-                          pin={otherPin}
-                          onPinChange={(p) => {
-                            setOtherPin(p);
-                            if (locationError) setLocationError('');
-                          }}
-                          onAddressFound={(address) => {
-                            setOtherAddress(address);
-                            if (!otherNameEdited) setOtherName(address.split(',')[0].trim());
-                          }}
-                          onNameFound={(name) => {
-                            if (!otherNameEdited) setOtherName(name);
-                          }}
-                        />
+                  {showDatePicker ? (
+                    <DateTimePicker
+                      value={editDateTime}
+                      mode="date"
+                      display="default"
+                      themeVariant="dark"
+                      minimumDate={new Date()}
+                      onChange={handleDateChange}
+                    />
+                  ) : null}
+                  {showTimePicker ? (
+                    <DateTimePicker
+                      value={editDateTime}
+                      mode="time"
+                      display="default"
+                      themeVariant="dark"
+                      onChange={handleTimeChange}
+                    />
+                  ) : null}
+                  {showWrapPicker ? (
+                    <DateTimePicker
+                      value={currentWrap ?? new Date(editDateTime.getTime() + 10 * 60 * 60 * 1000)}
+                      mode="time"
+                      display="default"
+                      themeVariant="dark"
+                      onChange={handleWrapChange}
+                    />
+                  ) : null}
 
-                        {/* Shown once there's a pin, or if this shoot day already has an address */}
-                        {otherPin || otherAddress ? (
-                          <>
-                            <Text style={detailStyles.pinAddress}>📍 {otherAddress}</Text>
+                  {saveError ? <Text style={[detailStyles.fieldError, { marginTop: 8 }]}>{saveError}</Text> : null}
 
-                            <Text style={detailStyles.fieldLabel}>Name for extras</Text>
-                            <TextInput
-                              style={detailStyles.input}
-                              value={otherName}
-                              onChangeText={(text) => {
-                                setOtherName(text);
-                                setOtherNameEdited(true);
-                                if (locationError) setLocationError('');
-                              }}
-                              placeholder="e.g. Beach car park"
-                              placeholderTextColor="rgba(255,255,255,0.5)"
-                            />
+                  <GoldButton
+                    title="Save Changes"
+                    loadingTitle="Saving..."
+                    loading={saving}
+                    onPress={handleSave}
+                    style={detailStyles.cardGoldButton}
+                  />
+                  <GhostButton title="Cancel" onPress={cancelEdit} style={detailStyles.cardGhostButton} />
+                </>
+              ) : (
+                <>
+                  {/* ----- View mode ----- */}
+                  <DetailRow label="Meeting point" style={{ marginBottom: 2 }}>
+                    {shootDay.location}
+                  </DetailRow>
+                  {shootDay.locationAddress ? (
+                    <Text style={detailStyles.addressText}>{shootDay.locationAddress}</Text>
+                  ) : null}
 
+                  <DetailRow label="Call">
+                    {formatToDDMMYYYY(shootDay.date)} at {formatToHHMM(shootDay.date)}
+                  </DetailRow>
+                  <DetailRow label="Est. wrap">
+                    {shootDay.estimatedWrapAt
+                      ? `${formatToHHMM(shootDay.estimatedWrapAt)}${
+                          isNextDay(shootDay.date, shootDay.estimatedWrapAt) ? ' (next day)' : ''
+                        }`
+                      : 'Not set'}
+                  </DetailRow>
+
+                  {shootDay.isPast ? (
+                    <>
+                      <Text style={detailStyles.pastNotice}>This shoot day has passed and can no longer be edited.</Text>
+                      <GoldButton
+                        title="Attendance"
+                        onPress={onOpenAttendance}
+                        style={[detailStyles.cardGoldButton, { marginTop: 12 }]}
+                      />
+                    </>
+                  ) : (
+                    <GoldButton title="Edit Shoot Day" onPress={startEdit} style={detailStyles.cardGoldButton} />
+                  )}
+                </>
+              )}
+            </GlassCard>
+
+            <View style={detailStyles.sectionHeaderRow}>
+              <Text style={[text.sectionHeading, { marginBottom: 0 }]}>Call Requests</Text>
+              {!shootDay.isPast ? (
+                <TouchableOpacity onPress={onAddCallRequest}>
+                  <Text style={detailStyles.addLinkText}>+ Add Call Request</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            {copyNotice ? <Text style={detailStyles.noticeText}>{copyNotice}</Text> : null}
+
+            {shootDay.callRequests.length === 0 ? (
+              <Text style={text.message}>No call requests for this shoot day yet.</Text>
+            ) : null}
+
+            {shootDay.callRequests.map((cr) =>
+              editingCallRequestId === cr.id ? (
+                <GlassCard key={cr.id}>
+                  <Text style={[text.label, detailStyles.formLabel]}>Description</Text>
+                  <TextField style={detailStyles.compactInput} value={editDescription} onChangeText={setEditDescription} />
+
+                  <Text style={[text.label, detailStyles.formLabel]}>Quantity Needed</Text>
+                  <TextField
+                    style={detailStyles.compactInput}
+                    value={editQuantity}
+                    onChangeText={setEditQuantity}
+                    keyboardType="numeric"
+                  />
+
+                  <GoldButton title="Save" onPress={onSaveCallRequest} style={detailStyles.cardGoldButton} />
+                  <GhostButton title="Cancel" onPress={onCancelEditCallRequest} style={detailStyles.cardGhostButton} />
+                </GlassCard>
+              ) : (
+                <GlassCard key={cr.id}>
+                  <Text style={detailStyles.cardTitle}>{cr.description}</Text>
+                  <Text style={detailStyles.cardDetail}>Needed: {cr.quantityNeeded}</Text>
+
+                  <View style={detailStyles.linkRow}>
+                    <TouchableOpacity onPress={() => onViewResponses(cr.id)}>
+                      <Text style={text.link}>View Responses</Text>
+                    </TouchableOpacity>
+                    {!shootDay.isPast ? (
+                      <TouchableOpacity onPress={() => onStartEditCallRequest(cr)}>
+                        <Text style={text.link}>Edit</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                    <TouchableOpacity onPress={() => (copyingId === cr.id ? closeCopy() : openCopy(cr.id))}>
+                      <Text style={text.link}>Copy</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* ----- Copy panel (only for the call request being copied) ----- */}
+                  {copyingId === cr.id ? (
+                    <View style={detailStyles.copyPanel}>
+                      <Text style={[text.label, detailStyles.formLabel]}>Copy to other shoot days</Text>
+
+                      {copyLoading && copyTargets.length === 0 ? (
+                        <Text style={detailStyles.hintText}>Loading shoot days...</Text>
+                      ) : copyTargets.length === 0 ? (
+                        <Text style={detailStyles.hintText}>No other upcoming shoot days to copy to.</Text>
+                      ) : (
+                        copyTargets.map((d) => {
+                          const ticked = copySelected.includes(d.id);
+                          return (
                             <TouchableOpacity
+                              key={d.id}
                               style={detailStyles.checkboxRow}
-                              onPress={() => setSaveForNextTime((prev) => !prev)}
+                              onPress={() => toggleCopyTarget(d.id)}
                             >
-                              <View style={[detailStyles.checkbox, saveForNextTime && detailStyles.checkboxChecked]}>
-                                {saveForNextTime ? <Text style={detailStyles.checkmark}>✓</Text> : null}
+                              <View style={[detailStyles.checkbox, ticked && detailStyles.checkboxChecked]}>
+                                {ticked ? <Text style={detailStyles.checkmark}>✓</Text> : null}
                               </View>
-                              <Text style={detailStyles.checkboxLabel}>Save this location for next time</Text>
+                              <Text style={detailStyles.checkboxLabel}>
+                                {formatToDDMMYYYY(d.date)} {formatToHHMM(d.date)} · {d.location}
+                              </Text>
                             </TouchableOpacity>
-                          </>
-                        ) : null}
-                      </>
-                    ) : (
-                      <Text style={detailStyles.hintText}>
-                        {locations.find((l) => l.id === selectedLocationId)?.address ?? ''}
-                      </Text>
-                    )}
-                    <View style={{ minHeight: 18 }}>
-                      {locationError ? <Text style={detailStyles.fieldError}>{locationError}</Text> : null}
-                    </View>
+                          );
+                        })
+                      )}
 
-                    {/* ----- Date + call time ----- */}
-                    <Text style={detailStyles.fieldLabel}>Date</Text>
-                    <TouchableOpacity style={detailStyles.input} onPress={() => setShowDatePicker(true)}>
-                      <Text style={detailStyles.dateTimeText}>{formatToDDMMYYYY(editDateTime)}</Text>
-                    </TouchableOpacity>
+                      {copyError ? <Text style={detailStyles.fieldError}>{copyError}</Text> : null}
 
-                    <Text style={detailStyles.fieldLabel}>Call time</Text>
-                    <TouchableOpacity style={detailStyles.input} onPress={() => setShowTimePicker(true)}>
-                      <Text style={detailStyles.dateTimeText}>{formatToHHMM(editDateTime)}</Text>
-                    </TouchableOpacity>
-
-                    {/* ----- Optional estimated wrap ----- */}
-                    <Text style={detailStyles.fieldLabel}>Est. wrap time (optional)</Text>
-                    {currentWrap ? (
-                      <View style={detailStyles.row}>
+                      <View style={detailStyles.copyButtonRow}>
                         <TouchableOpacity
-                          style={[detailStyles.input, { flex: 1, marginBottom: 0 }]}
-                          onPress={() => setShowWrapPicker(true)}
+                          style={[
+                            detailStyles.copyButton,
+                            (copySelected.length === 0 || copyLoading) && { opacity: 0.5 },
+                          ]}
+                          onPress={submitCopy}
+                          disabled={copySelected.length === 0 || copyLoading}
                         >
-                          <Text style={detailStyles.dateTimeText}>
-                            {formatToHHMM(currentWrap)}
-                            {isNextDay(editDateTime, currentWrap) ? '  (next day)' : ''}
+                          <Text style={detailStyles.copyButtonText}>
+                            {copyLoading && copySelected.length > 0 ? 'Copying...' : `Copy (${copySelected.length})`}
                           </Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setWrapTime(null)}>
-                          <Text style={detailStyles.removeText}>Remove</Text>
+                        <TouchableOpacity onPress={closeCopy}>
+                          <Text style={detailStyles.removeText}>Cancel</Text>
                         </TouchableOpacity>
                       </View>
-                    ) : (
-                      <TouchableOpacity onPress={() => setShowWrapPicker(true)} style={{ marginBottom: 12 }}>
-                        <Text style={detailStyles.addLinkText}>+ Add est. wrap time</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {showDatePicker ? (
-                      <DateTimePicker value={editDateTime} mode="date" display="default" themeVariant="dark" minimumDate={new Date()} onChange={handleDateChange} />
-                    ) : null}
-                    {showTimePicker ? (
-                      <DateTimePicker value={editDateTime} mode="time" display="default" themeVariant="dark" onChange={handleTimeChange} />
-                    ) : null}
-                    {showWrapPicker ? (
-                      <DateTimePicker
-                        value={currentWrap ?? new Date(editDateTime.getTime() + 10 * 60 * 60 * 1000)}
-                        mode="time"
-                        display="default"
-                        themeVariant="dark"
-                        onChange={handleWrapChange}
-                      />
-                    ) : null}
-
-                    {saveError ? <Text style={[detailStyles.fieldError, { marginTop: 8 }]}>{saveError}</Text> : null}
-
-                    <TouchableOpacity
-                      style={[detailStyles.button, saving && { opacity: 0.6 }]}
-                      onPress={handleSave}
-                      disabled={saving}
-                    >
-                      <Text style={detailStyles.buttonText}>{saving ? 'Saving...' : 'Save Changes'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={detailStyles.buttonGhost} onPress={cancelEdit}>
-                      <Text style={detailStyles.buttonGhostText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    {/* ----- View mode ----- */}
-                    <Text style={[detailStyles.detailRow, { marginBottom: 2 }]}>
-                      <Text style={detailStyles.fieldLabelInline}>Meeting point: </Text>
-                      {shootDay.location}
-                    </Text>
-                    {shootDay.locationAddress ? (
-                      <Text style={detailStyles.addressText}>{shootDay.locationAddress}</Text>
-                    ) : null}
-
-                    <Text style={detailStyles.detailRow}>
-                      <Text style={detailStyles.fieldLabelInline}>Call: </Text>
-                      {formatToDDMMYYYY(shootDay.date)} at {formatToHHMM(shootDay.date)}
-                    </Text>
-                    <Text style={detailStyles.detailRow}>
-                      <Text style={detailStyles.fieldLabelInline}>Est. wrap: </Text>
-                      {shootDay.estimatedWrapAt
-                        ? `${formatToHHMM(shootDay.estimatedWrapAt)}${
-                            isNextDay(shootDay.date, shootDay.estimatedWrapAt) ? ' (next day)' : ''
-                          }`
-                        : 'Not set'}
-                    </Text>
-
-                    {shootDay.isPast ? (                                           <>
-                        <Text style={detailStyles.pastNotice}>This shoot day has passed and can no longer be edited.</Text>
-                        <TouchableOpacity style={[detailStyles.button, { marginTop: 12 }]} onPress={onOpenAttendance}>
-                          <Text style={detailStyles.buttonText}>Attendance</Text>
-                        </TouchableOpacity>
-                      </>
-                    ) : (
-                      <TouchableOpacity style={detailStyles.button} onPress={startEdit}>
-                        <Text style={detailStyles.buttonText}>Edit Shoot Day</Text>
-                      </TouchableOpacity>
-                    )}
-                  </>
-                )}
-              </View>
-
-              <View style={detailStyles.sectionHeaderRow}>
-                <Text style={[detailStyles.sectionHeading, { marginBottom: 0 }]}>Call Requests</Text>
-                {!shootDay.isPast ? (
-                  <TouchableOpacity onPress={onAddCallRequest}>
-                    <Text style={detailStyles.addLinkText}>+ Add Call Request</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-
-              {copyNotice ? <Text style={detailStyles.noticeText}>{copyNotice}</Text> : null}
-
-              {shootDay.callRequests.length === 0 ? (
-                <Text style={detailStyles.message}>No call requests for this shoot day yet.</Text>
-              ) : null}
-
-              {shootDay.callRequests.map((cr) =>
-                editingCallRequestId === cr.id ? (
-                  <View key={cr.id} style={detailStyles.card}>
-                    <Text style={detailStyles.fieldLabel}>Description</Text>
-                    <TextInput
-                      style={detailStyles.input}
-                      value={editDescription}
-                      onChangeText={setEditDescription}
-                      placeholderTextColor="rgba(255,255,255,0.5)"
-                    />
-
-                    <Text style={detailStyles.fieldLabel}>Quantity Needed</Text>
-                    <TextInput
-                      style={detailStyles.input}
-                      value={editQuantity}
-                      onChangeText={setEditQuantity}
-                      keyboardType="numeric"
-                      placeholderTextColor="rgba(255,255,255,0.5)"
-                    />
-
-                    <TouchableOpacity style={detailStyles.button} onPress={onSaveCallRequest}>
-                      <Text style={detailStyles.buttonText}>Save</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={detailStyles.buttonGhost} onPress={onCancelEditCallRequest}>
-                      <Text style={detailStyles.buttonGhostText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View key={cr.id} style={detailStyles.card}>
-                    <Text style={detailStyles.cardTitle}>{cr.description}</Text>
-                    <Text style={detailStyles.cardDetail}>Needed: {cr.quantityNeeded}</Text>
-
-                                        <View style={detailStyles.linkRow}>
-                      <TouchableOpacity onPress={() => onViewResponses(cr.id)}>
-                        <Text style={detailStyles.linkText}>View Responses</Text>
-                      </TouchableOpacity>
-                      {!shootDay.isPast ? (
-                        <TouchableOpacity onPress={() => onStartEditCallRequest(cr)}>
-                          <Text style={detailStyles.linkText}>Edit</Text>
-                        </TouchableOpacity>
-                      ) : null}
-                      <TouchableOpacity onPress={() => (copyingId === cr.id ? closeCopy() : openCopy(cr.id))}>
-                        <Text style={detailStyles.linkText}>Copy</Text>
-                      </TouchableOpacity>
                     </View>
+                  ) : null}
+                </GlassCard>
+              )
+            )}
+          </>
+        ) : null}
 
-                    {/* ----- Copy panel (only for the call request being copied) ----- */}
-                    {copyingId === cr.id ? (
-                      <View style={detailStyles.copyPanel}>
-                        <Text style={detailStyles.fieldLabel}>Copy to other shoot days</Text>
+        {!loading && !shootDay ? <Text style={text.message}>Shoot day not found.</Text> : null}
 
-                        {copyLoading && copyTargets.length === 0 ? (
-                          <Text style={detailStyles.hintText}>Loading shoot days...</Text>
-                        ) : copyTargets.length === 0 ? (
-                          <Text style={detailStyles.hintText}>No other upcoming shoot days to copy to.</Text>
-                        ) : (
-                          copyTargets.map((d) => {
-                            const ticked = copySelected.includes(d.id);
-                            return (
-                              <TouchableOpacity
-                                key={d.id}
-                                style={detailStyles.checkboxRow}
-                                onPress={() => toggleCopyTarget(d.id)}
-                              >
-                                <View style={[detailStyles.checkbox, ticked && detailStyles.checkboxChecked]}>
-                                  {ticked ? <Text style={detailStyles.checkmark}>✓</Text> : null}
-                                </View>
-                                <Text style={detailStyles.checkboxLabel}>
-                                  {formatToDDMMYYYY(d.date)} {formatToHHMM(d.date)} · {d.location}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })
-                        )}
+        {message ? <Text style={text.message}>{message}</Text> : null}
 
-                        {copyError ? <Text style={detailStyles.fieldError}>{copyError}</Text> : null}
+        <GhostButton title="Back" onPress={onBack} style={detailStyles.cardGhostButton} />
+      </ScreenBackground>
 
-                        <View style={detailStyles.copyButtonRow}>
-                          <TouchableOpacity
-                            style={[
-                              detailStyles.copyButton,
-                              (copySelected.length === 0 || copyLoading) && { opacity: 0.5 },
-                            ]}
-                            onPress={submitCopy}
-                            disabled={copySelected.length === 0 || copyLoading}
-                          >
-                            <Text style={detailStyles.copyButtonText}>
-                              {copyLoading && copySelected.length > 0 ? 'Copying...' : `Copy (${copySelected.length})`}
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={closeCopy}>
-                            <Text style={detailStyles.removeText}>Cancel</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ) : null}
-                  </View>
-                )
-              )}
-            </>
-          ) : null}
-
-          {!loading && !shootDay ? <Text style={detailStyles.message}>Shoot day not found.</Text> : null}
-
-          {message ? <Text style={detailStyles.message}>{message}</Text> : null}
-
-          <TouchableOpacity style={detailStyles.buttonGhost} onPress={onBack}>
-            <Text style={detailStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      {/* "Saved!" pop-up, floating above the screen */}
+      <SavedPopup visible={showSavedPopup} />
+    </View>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const detailStyles = StyleSheet.create({
-  container: {
+  fill: {
     flex: 1,
   },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+  formLabel: {
+    marginTop: 4,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
-  message: {
+  // Slightly smaller than the normal TextField
+  compactInput: {
+    paddingVertical: 12,
     fontSize: 14,
-    color: '#fff',
     marginBottom: 12,
   },
-  card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
+  // Looks like an input, but tapping it opens a date/time picker
+  fieldBox: {
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    padding: 16,
-    marginBottom: 16,
+    borderColor: colors.inputBorder,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
   },
-  detailRow: {
+  dateTimeText: {
+    color: colors.text,
     fontSize: 14,
-    color: '#fff',
-    marginBottom: 8,
   },
   addressText: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.6)',
     marginBottom: 8,
-  },
-  fieldLabelInline: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
-    marginBottom: 6,
-    marginTop: 4,
   },
   pastNotice: {
     fontSize: 13,
@@ -702,43 +670,23 @@ const detailStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.6)',
     marginTop: 4,
   },
-  sectionHeading: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    color: 'rgba(255,255,255,0.72)',
-    marginTop: 8,
-    marginBottom: 10,
-  },
-    sectionHeaderRow: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 8,
     marginBottom: 10,
   },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 12,
-  },
   pickerWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: colors.inputBorder,
     borderRadius: 12,
     marginBottom: 8,
     overflow: 'hidden',
   },
   picker: {
-    color: '#fff',
+    color: colors.text,
   },
   hintText: {
     fontSize: 12,
@@ -746,7 +694,7 @@ const detailStyles = StyleSheet.create({
     marginBottom: 4,
     marginLeft: 4,
   },
-    pinAddress: {
+  pinAddress: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.7)',
     marginBottom: 10,
@@ -767,16 +715,16 @@ const detailStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#d99c4a',
-    borderColor: '#d99c4a',
+    backgroundColor: colors.gold,
+    borderColor: colors.gold,
   },
   checkmark: {
-    color: '#1a1330',
+    color: colors.onGold,
     fontSize: 13,
     fontWeight: '700',
   },
   checkboxLabel: {
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textSoft,
     fontSize: 13,
   },
   row: {
@@ -785,30 +733,29 @@ const detailStyles = StyleSheet.create({
     gap: 14,
     marginBottom: 12,
   },
-  dateTimeText: {
-    color: '#fff',
-    fontSize: 14,
+  errorSpace: {
+    minHeight: 18, // keeps the space so the form doesn't jump when an error appears
   },
   fieldError: {
-    color: '#ff9d9d',
+    color: colors.error,
     fontSize: 12,
     marginBottom: 6,
   },
   removeText: {
-    color: '#ff9d9d',
+    color: colors.error,
     fontSize: 13,
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
   addLinkText: {
-    color: '#d99c4a',
+    color: colors.gold,
     fontSize: 14,
     fontWeight: '600',
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginBottom: 4,
   },
   cardDetail: {
@@ -821,42 +768,16 @@ const detailStyles = StyleSheet.create({
     gap: 16,
     marginTop: 4,
   },
-  linkText: {
-    color: '#d99c4a',
-    fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-  },
-  button: {
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
+  cardGoldButton: {
     paddingVertical: 14,
-    alignItems: 'center',
     marginTop: 6,
+  },
+  cardGhostButton: {
+    marginTop: 0,
     marginBottom: 10,
   },
-  buttonText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
-    letterSpacing: 0.3,
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-    noticeText: {
-    color: '#d99c4a',
+  noticeText: {
+    color: colors.gold,
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 10,
@@ -874,32 +795,15 @@ const detailStyles = StyleSheet.create({
     marginTop: 8,
   },
   copyButton: {
-    backgroundColor: '#d99c4a',
+    backgroundColor: colors.gold,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 18,
   },
   copyButtonText: {
-    color: '#1a1330',
+    color: colors.onGold,
     fontWeight: '700',
     fontSize: 14,
-  },
-  savedPopup: {
-    position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    zIndex: 10,
-    elevation: 10,
-  },
-  savedPopupText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
   },
 });
 

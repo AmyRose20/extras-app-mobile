@@ -1,9 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import LinearGradient from 'react-native-linear-gradient';
 import { SKILL_GROUPS, AVAILABILITY_OPTIONS } from '../constants';
 import { ExtraSummary } from '../types';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GoldButton from '../components/GoldButton';
+import GhostButton from '../components/GhostButton';
+import TextField from '../components/TextField';
+import Pager from '../components/Pager';
+import { colors, text } from '../theme';
 
 const PAGE_SIZE = 10;
 
@@ -55,7 +61,7 @@ function ExtrasListScreen({
   onBack,
 }: Props) {
   const [activeFilterType, setActiveFilterType] = useState('skill');
-  
+
   // ----- Name search: wait until typing stops, then search -----
   const [searchText, setSearchText] = useState(nameFilter);
   useEffect(() => {
@@ -94,233 +100,200 @@ function ExtrasListScreen({
   ].filter(Boolean);
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={extrasListStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView ref={scrollRef} contentContainerStyle={extrasListStyles.scrollContent}>
+    <ScreenBackground scrollRef={scrollRef}>
+      <Text style={text.title}>Extra Profiles</Text>
 
-          <Text style={extrasListStyles.title}>Extra Profiles</Text>
-          
-          {/* Name search */}
-          <View style={extrasListStyles.searchWrapper}>
-            <TextInput
-              style={[extrasListStyles.input, extrasListStyles.searchInput]}
-              placeholder="Search by name"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={searchText}
-              onChangeText={setSearchText}
-              autoCorrect={false}
-              returnKeyType="search"
-            />
-            {searchText.length > 0 && (
-              <TouchableOpacity
-                style={extrasListStyles.searchClear}
-                onPress={() => setSearchText('')}
-                accessibilityLabel="Clear search"
-              >
-                <Text style={extrasListStyles.searchClearText}>✕</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+      {/* Name search */}
+      <View style={extrasListStyles.searchWrapper}>
+        <TextField
+          style={[extrasListStyles.compactInput, extrasListStyles.searchInput]}
+          placeholder="Search by name"
+          value={searchText}
+          onChangeText={setSearchText}
+          autoCorrect={false}
+          returnKeyType="search"
+        />
+        {searchText.length > 0 && (
+          <TouchableOpacity
+            style={extrasListStyles.searchClear}
+            onPress={() => setSearchText('')}
+            accessibilityLabel="Clear search"
+          >
+            <Text style={extrasListStyles.searchClearText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
-          <Text style={extrasListStyles.fieldLabel}>Filter by</Text>
-          <View style={extrasListStyles.filterRow}>
-            {/* Left dropdown: which kind of filter */}
-            <View style={[extrasListStyles.pickerWrapper, extrasListStyles.filterHalf]}>
+      <Text style={text.label}>Filter by</Text>
+      <View style={extrasListStyles.filterRow}>
+        {/* Left dropdown: which kind of filter */}
+        <View style={[extrasListStyles.pickerWrapper, extrasListStyles.filterHalf]}>
+          <Picker
+            selectedValue={activeFilterType}
+            onValueChange={(value) => setActiveFilterType(value)}
+            style={extrasListStyles.picker}
+            dropdownIconColor={colors.text}
+          >
+            <Picker.Item label="Skill" value="skill" color={colors.onGold} />
+            <Picker.Item label="Gender" value="gender" color={colors.onGold} />
+            <Picker.Item label="Availability" value="availability" color={colors.onGold} />
+            <Picker.Item label="Age range" value="age" color={colors.onGold} />
+          </Picker>
+        </View>
+
+        {/* Right dropdown: the value (not used for gender or age) */}
+        {activeFilterType !== 'age' && activeFilterType !== 'gender' && (
+          <View style={[extrasListStyles.pickerWrapper, extrasListStyles.filterHalf]}>
+            {activeFilterType === 'skill' && (
               <Picker
-                selectedValue={activeFilterType}
-                onValueChange={(value) => setActiveFilterType(value)}
+                selectedValue={skillFilter[0] ?? ''}
+                onValueChange={(value) => {
+                  // Group headings can't be picked
+                  if (value.startsWith('heading:')) return;
+                  // One skill at a time: clear, then add the new one
+                  onClearSkillFilter();
+                  if (value !== '') onSelectSkillFilter(value);
+                }}
                 style={extrasListStyles.picker}
-                dropdownIconColor="#fff"
+                dropdownIconColor={colors.text}
               >
-                <Picker.Item label="Skill" value="skill" color="#1a1330" />
-                <Picker.Item label="Gender" value="gender" color="#1a1330" />
-                <Picker.Item label="Availability" value="availability" color="#1a1330" />
-                <Picker.Item label="Age range" value="age" color="#1a1330" />
+                <Picker.Item label="All" value="" color={colors.onGold} />
+                {SKILL_GROUPS.flatMap((group) => [
+                  <Picker.Item
+                    key={`heading:${group.title}`}
+                    label={group.title.toUpperCase()}
+                    value={`heading:${group.title}`}
+                    color="#8a7fa8"
+                    enabled={false}
+                  />,
+                  ...group.options.map((skill) => (
+                    <Picker.Item key={skill} label={skill} value={skill} color={colors.onGold} />
+                  )),
+                ])}
               </Picker>
-            </View>
+            )}
 
-            {/* Right dropdown: the value (not used for gender or age) */}
-            {activeFilterType !== 'age' && activeFilterType !== 'gender' && (
-              <View style={[extrasListStyles.pickerWrapper, extrasListStyles.filterHalf]}>
-                {activeFilterType === 'skill' && (
-                  <Picker
-                    selectedValue={skillFilter[0] ?? ''}
-                    onValueChange={(value) => {
-                      // Group headings can't be picked
-                      if (value.startsWith('heading:')) return;
-                      // One skill at a time: clear, then add the new one
-                      onClearSkillFilter();
-                      if (value !== '') onSelectSkillFilter(value);
-                    }}
-                    style={extrasListStyles.picker}
-                    dropdownIconColor="#fff"
-                  >
-                    <Picker.Item label="All" value="" color="#1a1330" />
-                    {SKILL_GROUPS.flatMap((group) => [
-                      <Picker.Item
-                        key={`heading:${group.title}`}
-                        label={group.title.toUpperCase()}
-                        value={`heading:${group.title}`}
-                        color="#8a7fa8"
-                        enabled={false}
-                      />,
-                      ...group.options.map((skill) => (
-                        <Picker.Item key={skill} label={skill} value={skill} color="#1a1330" />
-                      )),
-                    ])}
-                  </Picker>
-                )}
-
-                {activeFilterType === 'availability' && (
-                  <Picker
-                    selectedValue={availabilityFilter[0] ?? ''}
-                    onValueChange={(value) => {
-                      onClearAvailabilityFilter();
-                      if (value !== '') onSelectAvailabilityFilter(value);
-                    }}
-                    style={extrasListStyles.picker}
-                    dropdownIconColor="#fff"
-                  >
-                    <Picker.Item label="All" value="" color="#1a1330" />
-                    {AVAILABILITY_OPTIONS.map((day) => (
-                      <Picker.Item key={day} label={day} value={day} color="#1a1330" />
-                    ))}
-                  </Picker>
-                )}
-              </View>
+            {activeFilterType === 'availability' && (
+              <Picker
+                selectedValue={availabilityFilter[0] ?? ''}
+                onValueChange={(value) => {
+                  onClearAvailabilityFilter();
+                  if (value !== '') onSelectAvailabilityFilter(value);
+                }}
+                style={extrasListStyles.picker}
+                dropdownIconColor={colors.text}
+              >
+                <Picker.Item label="All" value="" color={colors.onGold} />
+                {AVAILABILITY_OPTIONS.map((day) => (
+                  <Picker.Item key={day} label={day} value={day} color={colors.onGold} />
+                ))}
+              </Picker>
             )}
           </View>
+        )}
+      </View>
 
-          {activeFilterType === 'gender' && (
-            <>
-              <View style={extrasListStyles.chipsContainer}>
-                {['MALE', 'FEMALE'].map((option) => {
-                  const selected = genderFilter === option;
-                  return (
-                    <TouchableOpacity
-                      key={option}
-                      style={[extrasListStyles.chip, selected && extrasListStyles.chipSelected]}
-                      // Tap again to unselect (back to everyone)
-                      onPress={() => onSelectGenderFilter(selected ? '' : option)}
-                    >
-                      <Text style={[extrasListStyles.chipText, selected && extrasListStyles.chipTextSelected]}>
-                        {option === 'MALE' ? 'Male' : 'Female'}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              <Text style={extrasListStyles.hint}>Leave unselected to include everyone</Text>
-            </>
-          )}
-
-          {activeFilterType === 'age' && (
-            <>
-              <View style={extrasListStyles.row}>
-                <TextInput
-                  style={[extrasListStyles.input, { flex: 1 }]}
-                  placeholder="Min age"
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  value={minAgeFilter}
-                  onChangeText={setMinAgeFilter}
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  style={[extrasListStyles.input, { flex: 1 }]}
-                  placeholder="Max age"
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  value={maxAgeFilter}
-                  onChangeText={setMaxAgeFilter}
-                  keyboardType="numeric"
-                />
-              </View>
-              <TouchableOpacity style={extrasListStyles.button} onPress={onApplyAgeFilter}>
-                <Text style={extrasListStyles.buttonText}>Apply Age Filter</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {activeFilterSummaries.length > 0 && (
-            <>
-              <Text style={extrasListStyles.filterSummary}>
-                Active filters: {activeFilterSummaries.join(' | ')}
-              </Text>
-              <TouchableOpacity style={extrasListStyles.button} onPress={onClearFilters}>
-                <Text style={extrasListStyles.buttonText}>Clear Filters</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {loading ? (
-            <Text style={extrasListStyles.message}>Loading...</Text>
-          ) : extras.length === 0 ? (
-            <Text style={extrasListStyles.message}>No extras found.</Text>
-          ) : (
-            <View style={extrasListStyles.resultsSpacing}>
-              <Text style={extrasListStyles.resultCount}>
-                Showing {firstShown}–{lastShown} of {extras.length}
-              </Text>
-
-              {pageExtras.map((extra) => (
-                <TouchableOpacity key={extra.id} style={extrasListStyles.card} onPress={() => onSelectExtra(extra.id)}>
-                  <Text style={extrasListStyles.cardTitle}>{extra.name}</Text>
-                  <Text style={extrasListStyles.cardDetail}>
-                    Skills: {extra.skills.length > 0 ? extra.skills.join(', ') : 'Not set'}
-                  </Text>
-                  <Text style={extrasListStyles.cardDetail}>
-                    Availability: {extra.availability.length > 0 ? extra.availability.join(', ') : 'Not set'}
+      {activeFilterType === 'gender' && (
+        <>
+          <View style={extrasListStyles.chipsContainer}>
+            {['MALE', 'FEMALE'].map((option) => {
+              const selected = genderFilter === option;
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[extrasListStyles.chip, selected && extrasListStyles.chipSelected]}
+                  // Tap again to unselect (back to everyone)
+                  onPress={() => onSelectGenderFilter(selected ? '' : option)}
+                >
+                  <Text style={[extrasListStyles.chipText, selected && extrasListStyles.chipTextSelected]}>
+                    {option === 'MALE' ? 'Male' : 'Female'}
                   </Text>
                 </TouchableOpacity>
-              ))}
+              );
+            })}
+          </View>
+          <Text style={extrasListStyles.hint}>Leave unselected to include everyone</Text>
+        </>
+      )}
 
-              {totalPages > 1 && (
-                <View style={extrasListStyles.pager}>
-                  <TouchableOpacity
-                    style={[extrasListStyles.pagerButton, page === 1 && extrasListStyles.pagerButtonDisabled]}
-                    onPress={() => goToPage(page - 1)}
-                    disabled={page === 1}
-                  >
-                    <Text style={extrasListStyles.pagerButtonText}>‹ Prev</Text>
-                  </TouchableOpacity>
-                  <Text style={extrasListStyles.pagerText}>
-                    Page {page} of {totalPages}
-                  </Text>
-                  <TouchableOpacity
-                    style={[extrasListStyles.pagerButton, page === totalPages && extrasListStyles.pagerButtonDisabled]}
-                    onPress={() => goToPage(page + 1)}
-                    disabled={page === totalPages}
-                  >
-                    <Text style={extrasListStyles.pagerButtonText}>Next ›</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
+      {activeFilterType === 'age' && (
+        <>
+          <View style={extrasListStyles.row}>
+            <TextField
+              style={[extrasListStyles.compactInput, { flex: 1 }]}
+              placeholder="Min age"
+              value={minAgeFilter}
+              onChangeText={setMinAgeFilter}
+              keyboardType="numeric"
+            />
+            <TextField
+              style={[extrasListStyles.compactInput, { flex: 1 }]}
+              placeholder="Max age"
+              value={maxAgeFilter}
+              onChangeText={setMaxAgeFilter}
+              keyboardType="numeric"
+            />
+          </View>
+          <GoldButton title="Apply Age Filter" onPress={onApplyAgeFilter} style={extrasListStyles.goldButton} />
+        </>
+      )}
 
-          {message ? <Text style={extrasListStyles.message}>{message}</Text> : null}
+      {activeFilterSummaries.length > 0 && (
+        <>
+          <Text style={extrasListStyles.filterSummary}>Active filters: {activeFilterSummaries.join(' | ')}</Text>
+          <GoldButton title="Clear Filters" onPress={onClearFilters} style={extrasListStyles.goldButton} />
+        </>
+      )}
 
-          <TouchableOpacity style={extrasListStyles.buttonGhost} onPress={onBack}>
-            <Text style={extrasListStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      {loading ? (
+        <Text style={text.message}>Loading...</Text>
+      ) : extras.length === 0 ? (
+        <Text style={text.message}>No extras found.</Text>
+      ) : (
+        <View style={extrasListStyles.resultsSpacing}>
+          <Text style={extrasListStyles.resultCount}>
+            Showing {firstShown}–{lastShown} of {extras.length}
+          </Text>
+
+          {pageExtras.map((extra) => (
+            <TouchableOpacity key={extra.id} onPress={() => onSelectExtra(extra.id)}>
+              <GlassCard style={extrasListStyles.card}>
+                <Text style={extrasListStyles.cardTitle}>{extra.name}</Text>
+                <Text style={extrasListStyles.cardDetail}>
+                  Skills: {extra.skills.length > 0 ? extra.skills.join(', ') : 'Not set'}
+                </Text>
+                <Text style={extrasListStyles.cardDetail}>
+                  Availability: {extra.availability.length > 0 ? extra.availability.join(', ') : 'Not set'}
+                </Text>
+              </GlassCard>
+            </TouchableOpacity>
+          ))}
+
+          {/* Page controls (hidden when there's only one page) */}
+          <Pager page={page} totalPages={totalPages} onChange={goToPage} />
+        </View>
+      )}
+
+      {message ? <Text style={text.message}>{message}</Text> : null}
+
+      <GhostButton title="Back" onPress={onBack} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const extrasListStyles = StyleSheet.create({
   searchWrapper: {
     justifyContent: 'center',
     marginBottom: 16,
   },
-  searchInput: {
+  // Slightly smaller than the normal TextField (search box and age boxes)
+  compactInput: {
+    paddingVertical: 12,
+    fontSize: 14,
     marginBottom: 0,
+  },
+  searchInput: {
     paddingRight: 44, // room for the ✕ so text doesn't go under it
   },
   searchClear: {
@@ -333,41 +306,19 @@ const extrasListStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   searchClearText: {
-    color: '#fff',
+    color: colors.text,
     fontSize: 16,
   },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
-    marginBottom: 6,
-  },
   pickerWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: colors.inputBorder,
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
   },
   picker: {
-    color: '#fff',
+    color: colors.text,
   },
   filterRow: {
     flexDirection: 'row',
@@ -381,7 +332,7 @@ const extrasListStyles = StyleSheet.create({
     marginBottom: 6,
   },
   chip: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
     borderRadius: 20,
@@ -390,16 +341,16 @@ const extrasListStyles = StyleSheet.create({
     marginRight: 8,
   },
   chipSelected: {
-    backgroundColor: '#d99c4a',
-    borderColor: '#d99c4a',
+    backgroundColor: colors.gold,
+    borderColor: colors.gold,
   },
   chipText: {
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textSoft,
     fontSize: 13,
     fontWeight: '600',
   },
   chipTextSelected: {
-    color: '#1a1330',
+    color: colors.onGold,
   },
   hint: {
     fontSize: 12,
@@ -411,25 +362,13 @@ const extrasListStyles = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#fff',
-    fontSize: 14,
+  goldButton: {
+    marginBottom: 14,
   },
   filterSummary: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textSoft,
     marginBottom: 10,
-  },
-  message: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 12,
   },
   resultsSpacing: {
     marginTop: 4,
@@ -440,75 +379,18 @@ const extrasListStyles = StyleSheet.create({
     marginBottom: 10,
   },
   card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    padding: 16,
     marginBottom: 14,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginBottom: 4,
   },
   cardDetail: {
     fontSize: 13,
     color: 'rgba(255,255,255,0.78)',
     marginBottom: 2,
-  },
-  pager: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  pagerButton: {
-    borderWidth: 1,
-    borderColor: '#d99c4a',
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-  },
-  pagerButtonDisabled: {
-    opacity: 0.35,
-  },
-  pagerButtonText: {
-    color: '#d99c4a',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  pagerText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 13,
-  },
-  button: {
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  buttonText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
-    letterSpacing: 0.3,
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });
 

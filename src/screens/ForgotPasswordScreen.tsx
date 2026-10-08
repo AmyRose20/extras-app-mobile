@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { Text, TouchableOpacity, StyleSheet } from 'react-native';
 import * as authApi from '../api/authApi';
 import { ApiError, errorMessage } from '../api/client';
 import PasswordHints, { passwordChecks } from '../components/PasswordHints';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GoldButton from '../components/GoldButton';
+import GhostButton from '../components/GhostButton';
+import TextField from '../components/TextField';
+import { colors, text } from '../theme';
 
 // Forgot password, in two stages:
 //   1. enter your email → we email a 6-digit code
@@ -84,144 +89,113 @@ function ForgotPasswordScreen({ initialEmail, onBack, onDone }: Props) {
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={forgotStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={forgotStyles.scrollContent} keyboardShouldPersistTaps="handled">
-          <Text style={forgotStyles.title}>Reset your password</Text>
+    <ScreenBackground contentStyle={forgotStyles.content}>
+      <Text style={[text.title, forgotStyles.title]}>Reset your password</Text>
 
-          <View style={forgotStyles.card}>
-            {stage === 'email' ? (
-              <>
-                <Text style={forgotStyles.text}>
-                  Enter the email you log in with, and we'll send you a 6-digit code.
-                </Text>
-                <TextInput
-                  style={forgotStyles.input}
-                  placeholder="Email"
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                />
-                <Text style={forgotStyles.fieldError}>{emailError || ' '}</Text>
-                <TouchableOpacity
-                  style={[forgotStyles.button, loading && { opacity: 0.6 }]}
-                  onPress={requestCode}
-                  disabled={loading}
-                >
-                  <Text style={forgotStyles.buttonText}>{loading ? 'Sending...' : 'Send code'}</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                {notice ? <Text style={forgotStyles.notice}>{notice}</Text> : null}
-                <Text style={forgotStyles.hint}>Can't see it? Check your spam folder.</Text>
+      <GlassCard style={forgotStyles.card}>
+        {stage === 'email' ? (
+          <>
+            <Text style={forgotStyles.intro}>
+              Enter the email you log in with, and we'll send you a 6-digit code.
+            </Text>
+            <TextField
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+            />
+            <Text style={text.fieldError}>{emailError || ' '}</Text>
+            <GoldButton
+              title="Send code"
+              loadingTitle="Sending..."
+              loading={loading}
+              onPress={requestCode}
+              style={forgotStyles.lastInCard}
+            />
+          </>
+        ) : (
+          <>
+            {notice ? <Text style={forgotStyles.notice}>{notice}</Text> : null}
+            <Text style={[text.muted, forgotStyles.hint]}>Can't see it? Check your spam folder.</Text>
 
-                <Text style={forgotStyles.label}>Code</Text>
-                <TextInput
-                  style={[forgotStyles.input, forgotStyles.codeInput]}
-                  placeholder="123456"
-                  placeholderTextColor="rgba(255,255,255,0.35)"
-                  value={code}
-                  onChangeText={(text) => setCode(text.replace(/[^0-9]/g, ''))}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-                <Text style={forgotStyles.fieldError}>{codeError || ' '}</Text>
+            <Text style={text.label}>Code</Text>
+            <TextField
+              style={forgotStyles.codeInput}
+              placeholder="123456"
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              value={code}
+              onChangeText={(value) => setCode(value.replace(/[^0-9]/g, ''))}
+              keyboardType="number-pad"
+              maxLength={6}
+            />
+            <Text style={text.fieldError}>{codeError || ' '}</Text>
 
-                <Text style={forgotStyles.label}>New password</Text>
-                <TextInput
-                  style={forgotStyles.input}
-                  placeholder="New password"
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <TextInput
-                  style={forgotStyles.input}
-                  placeholder="Type it again"
-                  placeholderTextColor="rgba(255,255,255,0.5)"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Text style={forgotStyles.linkText}>{showPassword ? 'Hide passwords' : 'Show passwords'}</Text>
-                </TouchableOpacity>
+            <Text style={text.label}>New password</Text>
+            <TextField
+              placeholder="New password"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TextField
+              placeholder="Type it again"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Text style={[text.link, forgotStyles.link]}>{showPassword ? 'Hide passwords' : 'Show passwords'}</Text>
+            </TouchableOpacity>
 
-                <PasswordHints password={newPassword} />
-                <Text style={forgotStyles.fieldError}>{passwordError || ' '}</Text>
+            <PasswordHints password={newPassword} />
+            <Text style={text.fieldError}>{passwordError || ' '}</Text>
 
-                <TouchableOpacity
-                  style={[forgotStyles.button, loading && { opacity: 0.6 }]}
-                  onPress={resetPassword}
-                  disabled={loading}
-                >
-                  <Text style={forgotStyles.buttonText}>{loading ? 'Saving...' : 'Reset password'}</Text>
-                </TouchableOpacity>
+            <GoldButton
+              title="Reset password"
+              loadingTitle="Saving..."
+              loading={loading}
+              onPress={resetPassword}
+              style={forgotStyles.lastInCard}
+            />
 
-                <TouchableOpacity
-                  onPress={() => {
-                    setStage('email');
-                    setCode('');
-                    setCodeError('');
-                  }}
-                >
-                  <Text style={[forgotStyles.linkText, { marginTop: 14 }]}>Didn't get a code? Send a new one</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
+            <TouchableOpacity
+              onPress={() => {
+                setStage('email');
+                setCode('');
+                setCodeError('');
+              }}
+            >
+              <Text style={[text.link, forgotStyles.link, forgotStyles.resendLink]}>Didn't get a code? Send a new one</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </GlassCard>
 
-          <TouchableOpacity style={forgotStyles.buttonGhost} onPress={onBack}>
-            <Text style={forgotStyles.buttonGhostText}>Back to log in</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      <GhostButton title="Back to log in" onPress={onBack} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const forgotStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 48,
-    paddingBottom: 40,
+  content: {
+    paddingTop: 48, // there's no hamburger menu before logging in, so start a little lower
   },
   title: {
     fontSize: 22,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
   },
   card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
     padding: 18,
-    marginBottom: 16,
   },
-  text: {
+  intro: {
     fontSize: 14,
-    color: '#fff',
+    color: colors.text,
     marginBottom: 14,
   },
   notice: {
@@ -230,69 +204,22 @@ const forgotStyles = StyleSheet.create({
     marginBottom: 6,
   },
   hint: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.72)',
     marginBottom: 14,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 8,
   },
   codeInput: {
     fontSize: 24,
     letterSpacing: 8,
     textAlign: 'center',
   },
-  fieldError: {
-    color: '#ff9d9d',
-    fontSize: 12,
-    minHeight: 16,
-    marginBottom: 8,
-  },
-  linkText: {
-    fontSize: 13,
-    color: '#d99c4a',
-    textDecorationLine: 'underline',
+  link: {
+    fontWeight: 'normal',
     marginBottom: 10,
   },
-  button: {
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
+  resendLink: {
+    marginTop: 14,
   },
-  buttonText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+  lastInCard: {
+    marginBottom: 0,
   },
 });
 

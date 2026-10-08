@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import LinearGradient from 'react-native-linear-gradient';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import Share from 'react-native-share';
 import * as shootDaysApi from '../api/shootDaysApi';
 import { getAuthToken, errorMessage } from '../api/client';
 import { Attendee, DialogConfig } from '../types';
 import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay, formatToCalendarKey } from '../dateUtils';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GoldButton from '../components/GoldButton';
+import GhostButton from '../components/GhostButton';
+import { colors, text } from '../theme';
 
 // Attendance for a shoot day that has started: mark anyone who didn't turn up,
 // and record finish times (they start as the estimated wrap time).
@@ -33,7 +37,7 @@ function AttendanceScreen({ token, shootDayId, productionName, onBack, showDialo
   const [message, setMessage] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null); // which row is saving
   const [pickerFor, setPickerFor] = useState<string | null>(null); // inviteId, ALL, or null (closed)
-const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // ----- Load the attendance list -----
   const loadAttendance = useCallback(async () => {
@@ -109,15 +113,15 @@ const [exporting, setExporting] = useState(false);
   // "19:30", "01:00 (next day)", "19:00 (estimate)", or "Not recorded"
   const finishText = (a: Attendee): string => {
     if (!data || !a.finishedAt) return 'Not recorded';
-    let text = formatToHHMM(a.finishedAt);
-    if (isNextDay(data.shootDay.date, a.finishedAt)) text += ' (next day)';
-    if (a.finishTimeIsEstimate) text += ' (estimate)';
-    return text;
+    let label = formatToHHMM(a.finishedAt);
+    if (isNextDay(data.shootDay.date, a.finishedAt)) label += ' (next day)';
+    if (a.finishTimeIsEstimate) label += ' (estimate)';
+    return label;
   };
 
   const worked = data ? data.attendees.filter((a) => !a.noShow).length : 0;
   const noShows = data ? data.attendees.length - worked : 0;
-  
+
   // ----- Payroll export -----
   // Downloads the Excel file into the app's private cache, then opens Android's share menu.
   const exportPayroll = async () => {
@@ -150,8 +154,8 @@ const [exporting, setExporting] = useState(false);
         // The backend sent an error message (JSON) instead of a spreadsheet
         let error = 'Could not export payroll.';
         try {
-          const text = await ReactNativeBlobUtil.fs.readFile(path, 'utf8');
-          error = JSON.parse(text).error || error;
+          const body = await ReactNativeBlobUtil.fs.readFile(path, 'utf8');
+          error = JSON.parse(body).error || error;
         } catch (readError) {
           // keep the general message
         }
@@ -186,163 +190,142 @@ const [exporting, setExporting] = useState(false);
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={attendanceStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={attendanceStyles.scrollContent}>
-          <Text style={attendanceStyles.title}>Attendance</Text>
+    <ScreenBackground>
+      <Text style={[text.title, attendanceStyles.title]}>Attendance</Text>
 
-          {data ? (
-            <>
-              <Text style={attendanceStyles.subtitle}>
-                {productionName ? `${productionName} · ` : ''}
-                {formatToDDMMYYYY(data.shootDay.date)} · call {formatToHHMM(data.shootDay.date)}
-              </Text>
-              <Text style={attendanceStyles.hint}>
-                Mark anyone who didn't turn up, and change the finish time for anyone who left early or stayed late.
-              </Text>
+      {data ? (
+        <>
+          <Text style={attendanceStyles.subtitle}>
+            {productionName ? `${productionName} · ` : ''}
+            {formatToDDMMYYYY(data.shootDay.date)} · call {formatToHHMM(data.shootDay.date)}
+          </Text>
+          <Text style={attendanceStyles.hint}>
+            Mark anyone who didn't turn up, and change the finish time for anyone who left early or stayed late.
+          </Text>
 
-              <View style={attendanceStyles.summaryCard}>
-                <Text style={attendanceStyles.summaryText}>
-                  {worked} worked · {noShows} no-show{noShows === 1 ? '' : 's'}
-                </Text>
+          <GlassCard style={attendanceStyles.summaryCard}>
+            <Text style={attendanceStyles.summaryText}>
+              {worked} worked · {noShows} no-show{noShows === 1 ? '' : 's'}
+            </Text>
+            <GoldButton
+              title="Set finish time for everyone"
+              loadingTitle="Saving..."
+              loading={savingId === ALL}
+              disabled={worked === 0}
+              onPress={() => setPickerFor(ALL)}
+              style={attendanceStyles.cardButton}
+            />
+            <TouchableOpacity
+              style={[attendanceStyles.buttonOutline, exporting && { opacity: 0.6 }]}
+              onPress={confirmExport}
+              disabled={exporting || worked === 0}
+            >
+              <Text style={attendanceStyles.buttonOutlineText}>
+                {exporting ? 'Preparing file...' : 'Export payroll (Excel)'}
+              </Text>
+            </TouchableOpacity>
+          </GlassCard>
+
+          {data.attendees.length === 0 ? <Text style={text.message}>Nobody accepted this shoot day.</Text> : null}
+
+          {data.attendees.map((a) => (
+            <GlassCard key={a.inviteId} style={[attendanceStyles.card, a.noShow && attendanceStyles.cardNoShow]}>
+              <View style={attendanceStyles.headerRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={attendanceStyles.name}>{a.name}</Text>
+                  <Text style={attendanceStyles.callRequest}>{a.callRequest}</Text>
+                </View>
                 <TouchableOpacity
-                  style={[attendanceStyles.button, savingId === ALL && { opacity: 0.6 }]}
-                  onPress={() => setPickerFor(ALL)}
-                  disabled={savingId === ALL || worked === 0}
+                  style={[attendanceStyles.chip, a.noShow && attendanceStyles.chipSelected]}
+                  onPress={() => updateAttendee(a.inviteId, { noShow: !a.noShow })}
+                  disabled={savingId === a.inviteId}
                 >
-                  <Text style={attendanceStyles.buttonText}>
-                    {savingId === ALL ? 'Saving...' : 'Set finish time for everyone'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[attendanceStyles.buttonOutline, exporting && { opacity: 0.6 }]}
-                  onPress={confirmExport}
-                  disabled={exporting || worked === 0}
-                >
-                  <Text style={attendanceStyles.buttonOutlineText}>
-                    {exporting ? 'Preparing file...' : 'Export payroll (Excel)'}
+                  <Text style={[attendanceStyles.chipText, a.noShow && attendanceStyles.chipTextSelected]}>
+                    {a.noShow ? '✕ No-show' : 'No-show'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {data.attendees.length === 0 ? (
-                <Text style={attendanceStyles.message}>Nobody accepted this shoot day.</Text>
-              ) : null}
+              {a.noShow ? (
+                <Text style={attendanceStyles.noShowNote}>Didn't turn up · not included in payroll</Text>
+              ) : (
+                <TouchableOpacity
+                  style={attendanceStyles.finishRow}
+                  onPress={() => setPickerFor(a.inviteId)}
+                  disabled={savingId === a.inviteId}
+                >
+                  <Text style={attendanceStyles.finishLabel}>Finish time: </Text>
+                  <Text style={[attendanceStyles.finishValue, !a.finishedAt && attendanceStyles.missing]}>
+                    {savingId === a.inviteId ? 'Saving...' : finishText(a)}
+                  </Text>
+                  <Text style={attendanceStyles.linkText}>Change</Text>
+                </TouchableOpacity>
+              )}
+            </GlassCard>
+          ))}
+        </>
+      ) : null}
 
-              {data.attendees.map((a) => (
-                <View key={a.inviteId} style={[attendanceStyles.card, a.noShow && attendanceStyles.cardNoShow]}>
-                  <View style={attendanceStyles.headerRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={attendanceStyles.name}>{a.name}</Text>
-                      <Text style={attendanceStyles.callRequest}>{a.callRequest}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[attendanceStyles.chip, a.noShow && attendanceStyles.chipSelected]}
-                      onPress={() => updateAttendee(a.inviteId, { noShow: !a.noShow })}
-                      disabled={savingId === a.inviteId}
-                    >
-                      <Text style={[attendanceStyles.chipText, a.noShow && attendanceStyles.chipTextSelected]}>
-                        {a.noShow ? '✕ No-show' : 'No-show'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+      {loading && !data ? <Text style={text.message}>Loading...</Text> : null}
+      {message ? <Text style={attendanceStyles.errorText}>{message}</Text> : null}
 
-                  {a.noShow ? (
-                    <Text style={attendanceStyles.noShowNote}>Didn't turn up · not included in payroll</Text>
-                  ) : (
-                    <TouchableOpacity
-                      style={attendanceStyles.finishRow}
-                      onPress={() => setPickerFor(a.inviteId)}
-                      disabled={savingId === a.inviteId}
-                    >
-                      <Text style={attendanceStyles.finishLabel}>Finish time: </Text>
-                      <Text style={[attendanceStyles.finishValue, !a.finishedAt && attendanceStyles.missing]}>
-                        {savingId === a.inviteId ? 'Saving...' : finishText(a)}
-                      </Text>
-                      <Text style={attendanceStyles.linkText}>Change</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-            </>
-          ) : null}
+      <GhostButton title="Back" onPress={onBack} />
 
-          {loading && !data ? <Text style={attendanceStyles.message}>Loading...</Text> : null}
-          {message ? <Text style={attendanceStyles.errorText}>{message}</Text> : null}
-
-          <TouchableOpacity style={attendanceStyles.buttonGhost} onPress={onBack}>
-            <Text style={attendanceStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {pickerFor ? (
-          <DateTimePicker value={pickerStartValue()} mode="time" is24Hour display="default" onChange={onPickTime} />
-        ) : null}
-      </SafeAreaView>
-    </LinearGradient>
+      {/* The time picker opens as a pop-up on Android */}
+      {pickerFor ? (
+        <DateTimePicker value={pickerStartValue()} mode="time" is24Hour display="default" onChange={onPickTime} />
+      ) : null}
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const attendanceStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: 4, // the subtitle sits close underneath
   },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.72)',
+    color: colors.textMuted,
     marginBottom: 8,
   },
   hint: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.72)',
+    color: colors.textMuted,
     marginBottom: 16,
-  },
-  message: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 12,
   },
   errorText: {
     fontSize: 13,
-    color: '#ff9d9d',
+    color: colors.error,
     marginBottom: 12,
   },
   summaryCard: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    padding: 16,
     marginBottom: 14,
   },
   summaryText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginBottom: 10,
   },
-  card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
+  cardButton: {
+    paddingVertical: 12,
+    marginBottom: 0,
+  },
+  buttonOutline: {
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: colors.gold,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonOutlineText: {
+    color: colors.gold,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  card: {
     padding: 14,
     marginBottom: 10,
   },
@@ -358,11 +341,11 @@ const attendanceStyles = StyleSheet.create({
   name: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
   },
   callRequest: {
     fontSize: 12,
-    color: 'rgba(255,255,255,0.72)',
+    color: colors.textMuted,
     marginTop: 2,
   },
   chip: {
@@ -373,20 +356,20 @@ const attendanceStyles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   chipSelected: {
-    backgroundColor: '#ff9d9d',
-    borderColor: '#ff9d9d',
+    backgroundColor: colors.error,
+    borderColor: colors.error,
   },
   chipText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
   },
   chipTextSelected: {
-    color: '#1a1330',
+    color: colors.onGold,
   },
   noShowNote: {
     fontSize: 13,
-    color: '#ff9d9d',
+    color: colors.error,
   },
   finishRow: {
     flexDirection: 'row',
@@ -398,59 +381,21 @@ const attendanceStyles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
+    color: colors.textMuted,
   },
   finishValue: {
     fontSize: 14,
-    color: '#fff',
+    color: colors.text,
     marginRight: 10,
   },
   missing: {
-    color: '#ff9d9d',
+    color: colors.error,
     fontWeight: '700',
   },
   linkText: {
     fontSize: 13,
-    color: '#d99c4a',
+    color: colors.gold,
     textDecorationLine: 'underline',
-  },
-  button: {
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  buttonOutline: {
-    borderWidth: 1,
-    borderColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonOutlineText: {
-    color: '#d99c4a',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });
 

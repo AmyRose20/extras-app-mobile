@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import LinearGradient from 'react-native-linear-gradient';
 import * as shootDaysApi from '../api/shootDaysApi';
 import * as callRequestsApi from '../api/callRequestsApi';
 import { errorMessage } from '../api/client';
@@ -9,6 +8,12 @@ import { ShootDaySummary } from '../types';
 import { SKILL_GROUPS } from '../constants';
 import { formatToDDMMYYYY, formatToHHMM } from '../dateUtils';
 import GroupedMultiSelect from '../components/GroupedMultiSelect';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GoldButton from '../components/GoldButton';
+import GhostButton from '../components/GhostButton';
+import TextField from '../components/TextField';
+import { colors, text } from '../theme';
 
 type Props = {
   token: string;
@@ -36,7 +41,7 @@ function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }
         const upcoming = data
           .filter((d) => !d.isPast)
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-          setShootDays(upcoming);
+        setShootDays(upcoming);
         // Start on the shoot day we were opened from, if there is one; otherwise the soonest
         const initial = upcoming.find((d) => d.id === initialShootDayId);
         if (initial) {
@@ -135,219 +140,171 @@ function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }
     `${formatToDDMMYYYY(d.date)} ${formatToHHMM(d.date)} · ${d.location}`;
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={createCallStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={createCallStyles.scrollContent} keyboardShouldPersistTaps="handled">
-          <Text style={createCallStyles.title}>Create Call Request</Text>
+    <ScreenBackground>
+      <Text style={text.title}>Create Call Request</Text>
 
-          {/* ----- Shoot day + the call ----- */}
-          <View style={createCallStyles.card}>
-            <Text style={createCallStyles.cardTitle}>The Call</Text>
+      {/* ----- Shoot day + the call ----- */}
+      <GlassCard>
+        <Text style={createCallStyles.cardTitle}>The Call</Text>
 
-            <Text style={createCallStyles.fieldLabel}>Shoot day</Text>
-            {shootDaysLoading ? (
-              <Text style={createCallStyles.hintText}>Loading shoot days...</Text>
-            ) : shootDays.length === 0 ? (
-              <Text style={createCallStyles.hintText}>
-                No upcoming shoot days. Add a shoot day first, then create a call request for it.
-              </Text>
-            ) : (
-              <View style={createCallStyles.pickerWrapper}>
-                <Picker
-                  selectedValue={shootDayId}
-                  onValueChange={(value) => {
-                    setShootDayId(value);
-                    setErrors((prev) => ({ ...prev, shootDay: '' }));
-                  }}
-                  style={createCallStyles.picker}
-                  dropdownIconColor="#fff"
-                >
-                  {shootDays.map((d) => (
-                    <Picker.Item key={d.id} label={shootDayLabel(d)} value={d.id} color="#1a1330" />
-                  ))}
-                </Picker>
-              </View>
-            )}
-            <Text style={createCallStyles.fieldError}>{errors.shootDay || ''}</Text>
-
-            <Text style={createCallStyles.fieldLabel}>Description</Text>
-            <TextInput
-              style={createCallStyles.input}
-              placeholder="e.g. 20 men, fight scene"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={description}
-              onChangeText={(text) => {
-                setDescription(text);
-                if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
+        <Text style={text.label}>Shoot day</Text>
+        {shootDaysLoading ? (
+          <Text style={createCallStyles.hintText}>Loading shoot days...</Text>
+        ) : shootDays.length === 0 ? (
+          <Text style={createCallStyles.hintText}>
+            No upcoming shoot days. Add a shoot day first, then create a call request for it.
+          </Text>
+        ) : (
+          <View style={createCallStyles.pickerWrapper}>
+            <Picker
+              selectedValue={shootDayId}
+              onValueChange={(value) => {
+                setShootDayId(value);
+                setErrors((prev) => ({ ...prev, shootDay: '' }));
               }}
-            />
-            <Text style={createCallStyles.fieldError}>{errors.description || ''}</Text>
-
-            <Text style={createCallStyles.fieldLabel}>Quantity needed</Text>
-            <TextInput
-              style={createCallStyles.input}
-              placeholder="e.g. 20"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={quantityNeeded}
-              onChangeText={(text) => {
-                setQuantityNeeded(text);
-                if (errors.quantity) setErrors((prev) => ({ ...prev, quantity: '' }));
-              }}
-              keyboardType="numeric"
-            />
-            <Text style={createCallStyles.fieldError}>{errors.quantity || ''}</Text>
+              style={createCallStyles.picker}
+              dropdownIconColor={colors.text}
+            >
+              {shootDays.map((d) => (
+                <Picker.Item key={d.id} label={shootDayLabel(d)} value={d.id} color={colors.onGold} />
+              ))}
+            </Picker>
           </View>
+        )}
+        <Text style={createCallStyles.fieldError}>{errors.shootDay || ''}</Text>
 
-          {/* ----- Who we're looking for ----- */}
-          <View style={createCallStyles.card}>
-            <Text style={createCallStyles.cardTitle}>Who You're Looking For</Text>
+        <Text style={text.label}>Description</Text>
+        <TextField
+          style={createCallStyles.compactInput}
+          placeholder="e.g. 20 men, fight scene"
+          value={description}
+          onChangeText={(value) => {
+            setDescription(value);
+            if (errors.description) setErrors((prev) => ({ ...prev, description: '' }));
+          }}
+        />
+        <Text style={createCallStyles.fieldError}>{errors.description || ''}</Text>
 
-            <Text style={createCallStyles.fieldLabel}>Age range (optional)</Text>
-            <View style={createCallStyles.row}>
-              <TextInput
-                style={[createCallStyles.input, { flex: 1 }]}
-                placeholder="Min"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                value={minAge}
-                onChangeText={(text) => {
-                  setMinAge(text);
-                  if (errors.age) setErrors((prev) => ({ ...prev, age: '' }));
-                }}
-                keyboardType="numeric"
-              />
-              <Text style={createCallStyles.rangeDash}>–</Text>
-              <TextInput
-                style={[createCallStyles.input, { flex: 1 }]}
-                placeholder="Max"
-                placeholderTextColor="rgba(255,255,255,0.5)"
-                value={maxAge}
-                onChangeText={(text) => {
-                  setMaxAge(text);
-                  if (errors.age) setErrors((prev) => ({ ...prev, age: '' }));
-                }}
-                keyboardType="numeric"
-              />
-            </View>
-            <Text style={createCallStyles.fieldError}>{errors.age || ''}</Text>
+        <Text style={text.label}>Quantity needed</Text>
+        <TextField
+          style={createCallStyles.compactInput}
+          placeholder="e.g. 20"
+          value={quantityNeeded}
+          onChangeText={(value) => {
+            setQuantityNeeded(value);
+            if (errors.quantity) setErrors((prev) => ({ ...prev, quantity: '' }));
+          }}
+          keyboardType="numeric"
+        />
+        <Text style={createCallStyles.fieldError}>{errors.quantity || ''}</Text>
+      </GlassCard>
 
-            <Text style={createCallStyles.fieldLabel}>Gender (optional)</Text>
-            <View style={createCallStyles.chipsRow}>
-              {GENDER_OPTIONS.map((option) => {
-                const selected = gender === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.label}
-                    style={[createCallStyles.chip, selected && createCallStyles.chipSelected]}
-                    onPress={() => setGender((prev) => (prev === option.value ? '' : option.value))}
-                  >
-                    <Text style={[createCallStyles.chipText, selected && createCallStyles.chipTextSelected]}>
-                      {option.label}
-                    </Text>
-                  </TouchableOpacity>
-                                );
-              })}
-            </View>
-            <Text style={[createCallStyles.hintText, { marginTop: -6, marginBottom: 12 }]}>
-              Leave unselected to include everyone.
-            </Text>
+      {/* ----- Who we're looking for ----- */}
+      <GlassCard>
+        <Text style={createCallStyles.cardTitle}>Who You're Looking For</Text>
 
-            <GroupedMultiSelect
-              label="Skills (optional)"
-              groups={SKILL_GROUPS}
-              selected={skills}
-              onToggle={toggleSkill}
-              otherText={otherSkills}
-              onOtherTextChange={setOtherSkills}
-            />
-            <Text style={createCallStyles.hintText}>
-              Extras with any of the selected skills will be invited. Leave empty to include everyone.
-            </Text>
-          </View>
+        <Text style={text.label}>Age range (optional)</Text>
+        <View style={createCallStyles.row}>
+          <TextField
+            style={[createCallStyles.compactInput, { flex: 1 }]}
+            placeholder="Min"
+            value={minAge}
+            onChangeText={(value) => {
+              setMinAge(value);
+              if (errors.age) setErrors((prev) => ({ ...prev, age: '' }));
+            }}
+            keyboardType="numeric"
+          />
+          <Text style={createCallStyles.rangeDash}>–</Text>
+          <TextField
+            style={[createCallStyles.compactInput, { flex: 1 }]}
+            placeholder="Max"
+            value={maxAge}
+            onChangeText={(value) => {
+              setMaxAge(value);
+              if (errors.age) setErrors((prev) => ({ ...prev, age: '' }));
+            }}
+            keyboardType="numeric"
+          />
+        </View>
+        <Text style={createCallStyles.fieldError}>{errors.age || ''}</Text>
 
-          {warning ? <Text style={createCallStyles.warningText}>{warning}</Text> : null}
-          {message ? <Text style={createCallStyles.errorMessage}>{message}</Text> : null}
+        <Text style={text.label}>Gender (optional)</Text>
+        <View style={createCallStyles.chipsRow}>
+          {GENDER_OPTIONS.map((option) => {
+            const selected = gender === option.value;
+            return (
+              <TouchableOpacity
+                key={option.label}
+                style={[createCallStyles.chip, selected && createCallStyles.chipSelected]}
+                onPress={() => setGender((prev) => (prev === option.value ? '' : option.value))}
+              >
+                <Text style={[createCallStyles.chipText, selected && createCallStyles.chipTextSelected]}>
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={[createCallStyles.hintText, { marginTop: -6, marginBottom: 12 }]}>
+          Leave unselected to include everyone.
+        </Text>
 
-          <TouchableOpacity
-            style={[createCallStyles.button, (submitting || shootDays.length === 0) && { opacity: 0.6 }]}
-            onPress={handleCreate}
-            disabled={submitting || shootDays.length === 0}
-          >
-            <Text style={createCallStyles.buttonText}>{submitting ? 'Creating...' : 'Create Call Request'}</Text>
-          </TouchableOpacity>
+        <GroupedMultiSelect
+          label="Skills (optional)"
+          groups={SKILL_GROUPS}
+          selected={skills}
+          onToggle={toggleSkill}
+          otherText={otherSkills}
+          onOtherTextChange={setOtherSkills}
+        />
+        <Text style={createCallStyles.hintText}>
+          Extras with any of the selected skills will be invited. Leave empty to include everyone.
+        </Text>
+      </GlassCard>
 
-          <TouchableOpacity style={createCallStyles.buttonGhost} onPress={onBack}>
-            <Text style={createCallStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      {warning ? <Text style={createCallStyles.warningText}>{warning}</Text> : null}
+      {message ? <Text style={createCallStyles.errorMessage}>{message}</Text> : null}
+
+      <GoldButton
+        title="Create Call Request"
+        loadingTitle="Creating..."
+        loading={submitting}
+        disabled={shootDays.length === 0}
+        onPress={handleCreate}
+        style={createCallStyles.createButton}
+      />
+
+      <GhostButton title="Back" onPress={onBack} style={createCallStyles.backButton} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const createCallStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
-  card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    padding: 16,
-    marginBottom: 16,
-  },
   cardTitle: {
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    color: 'rgba(255,255,255,0.72)',
+    color: colors.textMuted,
     marginBottom: 12,
   },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
+  // Slightly smaller than the normal TextField
+  compactInput: {
     paddingVertical: 12,
-    color: '#fff',
     fontSize: 14,
+    marginBottom: 0,
   },
   pickerWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: colors.inputBorder,
     borderRadius: 12,
     overflow: 'hidden',
   },
   picker: {
-    color: '#fff',
+    color: colors.text,
   },
   row: {
     flexDirection: 'row',
@@ -364,7 +321,7 @@ const createCallStyles = StyleSheet.create({
     marginBottom: 12,
   },
   chip: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
     borderRadius: 20,
@@ -374,16 +331,16 @@ const createCallStyles = StyleSheet.create({
     marginBottom: 8,
   },
   chipSelected: {
-    backgroundColor: '#d99c4a',
-    borderColor: '#d99c4a',
+    backgroundColor: colors.gold,
+    borderColor: colors.gold,
   },
   chipText: {
-    color: 'rgba(255,255,255,0.85)',
+    color: colors.textSoft,
     fontSize: 13,
     fontWeight: '600',
   },
   chipTextSelected: {
-    color: '#1a1330',
+    color: colors.onGold,
   },
   hintText: {
     fontSize: 12,
@@ -391,7 +348,7 @@ const createCallStyles = StyleSheet.create({
     marginBottom: 4,
   },
   fieldError: {
-    color: '#ff9d9d',
+    color: colors.error,
     fontSize: 12,
     minHeight: 16,
     marginTop: 4,
@@ -399,42 +356,21 @@ const createCallStyles = StyleSheet.create({
   },
   warningText: {
     fontSize: 13,
-    color: '#d99c4a',
+    color: colors.gold,
     textAlign: 'center',
     marginBottom: 12,
   },
   errorMessage: {
     fontSize: 13,
-    color: '#ff9d9d',
+    color: colors.error,
     textAlign: 'center',
     marginBottom: 12,
   },
-  button: {
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
+  createButton: {
     marginTop: 4,
-    marginBottom: 10,
   },
-  buttonText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
-    letterSpacing: 0.3,
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+  backButton: {
+    marginTop: 0,
   },
 });
 

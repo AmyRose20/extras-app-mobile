@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { Text, TouchableOpacity, StyleSheet } from 'react-native';
 import * as authApi from '../api/authApi';
 import { ApiError, errorMessage } from '../api/client';
 import PasswordHints, { passwordChecks } from '../components/PasswordHints';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GoldButton from '../components/GoldButton';
+import GhostButton from '../components/GhostButton';
+import TextField from '../components/TextField';
+import { text } from '../theme';
 
 // Change password while logged in. Other phones are logged out;
 // this phone gets a fresh login token so it stays logged in.
@@ -57,163 +62,77 @@ function ChangePasswordScreen({ token, onChanged, onBack }: Props) {
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={changeStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={changeStyles.scrollContent} keyboardShouldPersistTaps="handled">
-          <Text style={changeStyles.title}>Change Password</Text>
+    <ScreenBackground>
+      <Text style={text.title}>Change Password</Text>
 
-          <View style={changeStyles.card}>
-            <Text style={changeStyles.label}>Current password</Text>
-            <TextInput
-              style={changeStyles.input}
-              placeholder="Current password"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <Text style={changeStyles.fieldError}>{currentError || ' '}</Text>
+      <GlassCard style={changeStyles.card}>
+        <Text style={text.label}>Current password</Text>
+        <TextField
+          placeholder="Current password"
+          value={currentPassword}
+          onChangeText={setCurrentPassword}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <Text style={text.fieldError}>{currentError || ' '}</Text>
 
-            <Text style={changeStyles.label}>New password</Text>
-            <TextInput
-              style={changeStyles.input}
-              placeholder="New password"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TextInput
-              style={changeStyles.input}
-              placeholder="Type the new password again"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <Text style={changeStyles.linkText}>{showPassword ? 'Hide passwords' : 'Show passwords'}</Text>
-            </TouchableOpacity>
+        <Text style={text.label}>New password</Text>
+        <TextField
+          placeholder="New password"
+          value={newPassword}
+          onChangeText={setNewPassword}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TextField
+          placeholder="Type the new password again"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <Text style={[text.link, changeStyles.showLink]}>{showPassword ? 'Hide passwords' : 'Show passwords'}</Text>
+        </TouchableOpacity>
 
-            <PasswordHints password={newPassword} />
-            <Text style={changeStyles.fieldError}>{newError || ' '}</Text>
+        <PasswordHints password={newPassword} />
+        <Text style={text.fieldError}>{newError || ' '}</Text>
 
-            <Text style={changeStyles.note}>
-              For your security, you'll be logged out on any other phones.
-            </Text>
+        <Text style={[text.muted, changeStyles.note]}>
+          For your security, you'll be logged out on any other phones.
+        </Text>
 
-            <TouchableOpacity
-              style={[changeStyles.button, loading && { opacity: 0.6 }]}
-              onPress={save}
-              disabled={loading}
-            >
-              <Text style={changeStyles.buttonText}>{loading ? 'Saving...' : 'Change password'}</Text>
-            </TouchableOpacity>
-          </View>
+        <GoldButton
+          title="Change password"
+          loadingTitle="Saving..."
+          loading={loading}
+          onPress={save}
+          style={changeStyles.lastInCard}
+        />
+      </GlassCard>
 
-          <TouchableOpacity style={changeStyles.buttonGhost} onPress={onBack}>
-            <Text style={changeStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      <GhostButton title="Back" onPress={onBack} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const changeStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
   card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
     padding: 18,
-    marginBottom: 16,
   },
-  label: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    color: 'rgba(255,255,255,0.72)',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  fieldError: {
-    color: '#ff9d9d',
-    fontSize: 12,
-    minHeight: 16,
-    marginBottom: 8,
-  },
-  linkText: {
-    fontSize: 13,
-    color: '#d99c4a',
-    textDecorationLine: 'underline',
+  showLink: {
+    fontWeight: 'normal',
     marginBottom: 10,
   },
   note: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.72)',
     marginBottom: 12,
   },
-  button: {
-    backgroundColor: '#d99c4a',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#1a1330',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
+  lastInCard: {
+    marginBottom: 0,
   },
 });
 

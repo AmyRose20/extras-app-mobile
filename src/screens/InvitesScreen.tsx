@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { Linking, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { DialogConfig, Invite, Tally } from '../types';
 import { formatToDDMMYYYY, formatToHHMM, isNextDay } from '../dateUtils';
+import ScreenBackground from '../components/ScreenBackground';
+import GlassCard from '../components/GlassCard';
+import GhostButton from '../components/GhostButton';
+import Pager from '../components/Pager';
+import ActivityCard from '../components/ActivityCard';
+import { colors, text } from '../theme';
 
 type Props = {
   invites: Invite[];
@@ -22,7 +27,7 @@ function statusStyle(status: string, isExpired: boolean) {
 }
 
 function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, showDialog }: Props) {
-   const confirmDecline = (inviteId: string) => {
+  const confirmDecline = (inviteId: string) => {
     showDialog({
       title: 'Decline this invite?',
       message: 'Are you sure you want to decline?',
@@ -44,7 +49,7 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
     });
   };
 
-    // Opens Google Maps with directions to the meeting point.
+  // Opens Google Maps with directions to the meeting point.
   // Uses the exact map pin if there is one; otherwise the address (or name).
   const openDirections = (
     name: string,
@@ -58,7 +63,7 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
         : encodeURIComponent(address || name);
     Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`);
   };
- 
+
   // ----- Sorting + paging -----
   const PAGE_SIZE = 5; // invites per page
   const [page, setPage] = useState(1);
@@ -100,208 +105,93 @@ function InvitesScreen({ invites, loading, message, onRespond, onBack, tally, sh
   };
 
   return (
-    <LinearGradient
-      colors={['#1a1330', '#241d3d', '#2f3f52', '#3a5a63', '#c9772f', '#8a3a1e']}
-      locations={[0, 0.28, 0.52, 0.68, 0.9, 1]}
-      start={{ x: 0.15, y: 0 }}
-      end={{ x: 0.85, y: 1 }}
-      style={invitesStyles.container}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView ref={scrollRef} contentContainerStyle={invitesStyles.scrollContent}>
-          <Text style={invitesStyles.title}>My Invites</Text>
+    <ScreenBackground scrollRef={scrollRef}>
+      <Text style={text.title}>My Invites</Text>
 
-          {tally ? (
-            <View style={invitesStyles.card}>
-              <Text style={invitesStyles.widgetTitle}>My Activity</Text>
-              <View style={invitesStyles.statsRow}>
-                <View style={invitesStyles.statColumn}>
-                  <Text style={invitesStyles.statNumber}>{tally.worked}</Text>
-                  <Text style={invitesStyles.statLabel}>Worked</Text>
-                </View>
-                <View style={invitesStyles.statColumn}>
-                  <Text style={invitesStyles.statNumber}>{tally.declined}</Text>
-                  <Text style={invitesStyles.statLabel}>Declined</Text>
-                </View>
-                <View style={invitesStyles.statColumn}>
-                  <Text style={invitesStyles.statNumber}>{tally.cancelled}</Text>
-                  <Text style={invitesStyles.statLabel}>Cancelled</Text>
-                </View>
-                <View style={invitesStyles.statColumn}>
-                  <Text style={invitesStyles.statNumber}>{tally.noShows}</Text>
-                  <Text style={invitesStyles.statLabel}>No-shows</Text>
-                </View>
-              </View>
-            </View>
-          ) : null}
+      {tally ? <ActivityCard title="My Activity" tally={tally} /> : null}
 
-          {loading ? <Text style={invitesStyles.message}>Loading...</Text> : null}
+      {loading ? <Text style={text.message}>Loading...</Text> : null}
 
-          {!loading && invites.length === 0 ? (
-            <Text style={invitesStyles.message}>No invites yet.</Text>
-          ) : null}
+      {!loading && invites.length === 0 ? <Text style={text.message}>No invites yet.</Text> : null}
 
-          {pageItems.map((invite) => {
-            const shootDayPassed = new Date(invite.callRequest.shootDay.date) < new Date();
+      {pageItems.map((invite) => {
+        const shootDay = invite.callRequest.shootDay;
+        const shootDayPassed = new Date(shootDay.date) < new Date();
 
-            return (
-              <View key={invite.id} style={invitesStyles.card}>
-                <Text style={invitesStyles.cardTitle}>{invite.callRequest.description}</Text>
-                <Text style={invitesStyles.cardDetail}>{invite.callRequest.shootDay.production.name}</Text>
+        return (
+          <GlassCard key={invite.id} style={invitesStyles.card}>
+            <Text style={invitesStyles.cardTitle}>{invite.callRequest.description}</Text>
+            <Text style={invitesStyles.cardDetail}>{shootDay.production.name}</Text>
 
-                <Text style={invitesStyles.cardDetail}>
-                  {formatToDDMMYYYY(invite.callRequest.shootDay.date)} · Call {formatToHHMM(invite.callRequest.shootDay.date)}
-                  {invite.callRequest.shootDay.estimatedWrapAt
-                    ? ` · Est. wrap ${formatToHHMM(invite.callRequest.shootDay.estimatedWrapAt)}${
-                        isNextDay(invite.callRequest.shootDay.date, invite.callRequest.shootDay.estimatedWrapAt)
-                          ? ' (next day)'
-                          : ''
-                      }`
-                    : ''}
-                </Text>
-                <Text style={[invitesStyles.cardDetail, { marginTop: 6 }]}>
-                  📍 {invite.callRequest.shootDay.location}
-                </Text>
-                {invite.callRequest.shootDay.locationAddress ? (
-                  <Text style={invitesStyles.addressText}>{invite.callRequest.shootDay.locationAddress}</Text>
-                ) : null}
+            <Text style={invitesStyles.cardDetail}>
+              {formatToDDMMYYYY(shootDay.date)} · Call {formatToHHMM(shootDay.date)}
+              {shootDay.estimatedWrapAt
+                ? ` · Est. wrap ${formatToHHMM(shootDay.estimatedWrapAt)}${
+                    isNextDay(shootDay.date, shootDay.estimatedWrapAt) ? ' (next day)' : ''
+                  }`
+                : ''}
+            </Text>
+            <Text style={[invitesStyles.cardDetail, { marginTop: 6 }]}>📍 {shootDay.location}</Text>
+            {shootDay.locationAddress ? <Text style={invitesStyles.addressText}>{shootDay.locationAddress}</Text> : null}
 
-                {!shootDayPassed ? (
-                  <TouchableOpacity
-                    onPress={() =>
-                      openDirections(
-                        invite.callRequest.shootDay.location,
-                        invite.callRequest.shootDay.locationAddress,
-                        invite.callRequest.shootDay.latitude,
-                        invite.callRequest.shootDay.longitude
-                      )
-                    }
-                  >
-                    <Text style={invitesStyles.directionsText}>Get directions</Text>
-                  </TouchableOpacity>
-                ) : null}
-                <Text style={statusStyle(invite.status, invite.isExpired)}>
-                  Status: {invite.isExpired ? 'EXPIRED' : invite.status === 'NO_SHOW' ? 'NO-SHOW' : invite.status}
-                </Text>
-
-                {invite.status === 'PENDING' && !invite.isExpired ? (
-                  <View style={invitesStyles.cardButtonRow}>
-                    <TouchableOpacity
-                      style={[invitesStyles.smallButton, invitesStyles.acceptButton]}
-                      onPress={() => onRespond(invite.id, 'ACCEPTED')}>
-                      <Text style={invitesStyles.acceptButtonText}>Accept</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[invitesStyles.smallButton, invitesStyles.declineButton]}
-                      onPress={() => confirmDecline(invite.id)}>
-                      <Text style={invitesStyles.declineButtonText}>Decline</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : null}
-
-                {invite.status === 'ACCEPTED' && !shootDayPassed ? (
-                  <TouchableOpacity onPress={() => confirmCancel(invite.id)}>
-                    <Text style={invitesStyles.cancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            );
-          })}
-
-          
-          {/* Page controls — only when there's more than one page */}
-          {!loading && totalPages > 1 ? (
-            <View style={invitesStyles.pagination}>
+            {!shootDayPassed ? (
               <TouchableOpacity
-                style={[invitesStyles.pageButton, page === 1 && invitesStyles.pageButtonDisabled]}
-                onPress={() => goToPage(page - 1)}
-                disabled={page === 1}
+                onPress={() =>
+                  openDirections(shootDay.location, shootDay.locationAddress, shootDay.latitude, shootDay.longitude)
+                }
               >
-                <Text style={invitesStyles.pageButtonText}>‹ Prev</Text>
+                <Text style={[text.link, invitesStyles.directionsText]}>Get directions</Text>
               </TouchableOpacity>
+            ) : null}
+            <Text style={[invitesStyles.status, statusStyle(invite.status, invite.isExpired)]}>
+              Status: {invite.isExpired ? 'EXPIRED' : invite.status === 'NO_SHOW' ? 'NO-SHOW' : invite.status}
+            </Text>
 
-              <Text style={invitesStyles.pageLabel}>
-                Page {page} of {totalPages}
-              </Text>
+            {invite.status === 'PENDING' && !invite.isExpired ? (
+              <View style={invitesStyles.cardButtonRow}>
+                <TouchableOpacity
+                  style={[invitesStyles.smallButton, invitesStyles.acceptButton]}
+                  onPress={() => onRespond(invite.id, 'ACCEPTED')}
+                >
+                  <Text style={invitesStyles.acceptButtonText}>Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[invitesStyles.smallButton, invitesStyles.declineButton]}
+                  onPress={() => confirmDecline(invite.id)}
+                >
+                  <Text style={invitesStyles.declineButtonText}>Decline</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
 
-              <TouchableOpacity
-                style={[invitesStyles.pageButton, page === totalPages && invitesStyles.pageButtonDisabled]}
-                onPress={() => goToPage(page + 1)}
-                disabled={page === totalPages}
-              >
-                <Text style={invitesStyles.pageButtonText}>Next ›</Text>
+            {invite.status === 'ACCEPTED' && !shootDayPassed ? (
+              <TouchableOpacity onPress={() => confirmCancel(invite.id)}>
+                <Text style={[text.link, invitesStyles.cancelText]}>Cancel</Text>
               </TouchableOpacity>
-            </View>
-          ) : null}
+            ) : null}
+          </GlassCard>
+        );
+      })}
 
-          {message ? <Text style={invitesStyles.message}>{message}</Text> : null}
+      {/* Page controls (hidden when there's only one page) */}
+      {!loading ? <Pager page={page} totalPages={totalPages} onChange={goToPage} /> : null}
 
-          <TouchableOpacity style={invitesStyles.buttonGhost} onPress={onBack}>
-            <Text style={invitesStyles.buttonGhostText}>Back</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      {message ? <Text style={text.message}>{message}</Text> : null}
+
+      <GhostButton title="Back" onPress={onBack} />
+    </ScreenBackground>
   );
 }
 
+// Only what's special to this screen; everything else comes from theme.ts and the shared components
 const invitesStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 0.5,
-    marginBottom: 16,
-  },
-  message: {
-    fontSize: 14,
-    color: '#fff',
-    marginBottom: 12,
-  },
   card: {
-    backgroundColor: 'rgba(12,10,22,0.55)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    padding: 16,
     marginBottom: 14,
-  },
-  widgetTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    color: 'rgba(255,255,255,0.72)',
-    marginBottom: 12,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statColumn: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.72)',
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.text,
     marginBottom: 4,
   },
   cardDetail: {
@@ -309,35 +199,27 @@ const invitesStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.78)',
     marginBottom: 2,
   },
-    addressText: {
+  addressText: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.6)',
     marginBottom: 2,
   },
   directionsText: {
-    color: '#d99c4a',
-    fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
     marginTop: 6,
   },
-  statusPending: {
+  status: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#d99c4a',
     marginTop: 8,
+  },
+  statusPending: {
+    color: colors.gold,
   },
   statusAccepted: {
-    fontSize: 12,
-    fontWeight: '700',
     color: '#8fd9a8',
-    marginTop: 8,
   },
   statusNegative: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#ff9d9d',
-    marginTop: 8,
+    color: colors.error,
   },
   cardButtonRow: {
     flexDirection: 'row',
@@ -354,67 +236,23 @@ const invitesStyles = StyleSheet.create({
     backgroundColor: '#8fd9a8',
   },
   acceptButtonText: {
-    color: '#1a1330',
+    color: colors.onGold,
     fontWeight: '700',
     fontSize: 13,
   },
   declineButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#ff9d9d',
+    borderColor: colors.error,
   },
   declineButtonText: {
-    color: '#ff9d9d',
+    color: colors.error,
     fontWeight: '700',
     fontSize: 13,
   },
   cancelText: {
-    color: '#ff9d9d',
-    fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+    color: colors.error,
     marginTop: 10,
-  },
-    pagination: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  pageButton: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  pageButtonDisabled: {
-    opacity: 0.35,
-  },
-  pageButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  pageLabel: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  buttonGhost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  buttonGhostText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
   },
 });
 
