@@ -2,18 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import * as locationsApi from '../api/locationsApi';
-import * as shootDaysApi from '../api/shootDaysApi';
-import { ApiError, errorMessage } from '../api/client';
-import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
-import { Location } from '../types';
-import MapPinPicker, { Pin } from '../components/MapPinPicker';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import TextField from '../components/TextField';
-import { colors, text } from '../theme';
+import * as locationsApi from '../../api/locationsApi';
+import * as shootDaysApi from '../../api/shootDaysApi';
+import { ApiError, errorMessage } from '../../api/client';
+import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../../dateUtils';
+import { Location } from '../../types';
+import MapPinPicker, { Pin } from '../../components/MapPinPicker';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import TextField from '../../components/TextField';
+import { colors, text } from '../../theme';
 
 const OTHER = 'OTHER'; // dropdown value for "Other (enter address)"
 
@@ -27,13 +27,12 @@ type BatchDay = {
 };
 
 type Props = {
-  token: string;
   productionName: string | null; // the coordinator's production, shown read-only
   onBack: () => void;
   onCreated: (count: number) => void; // App shows a message and goes to the shoot days list
 };
 
-function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }: Props) {
+function BulkCreateShootDaysScreen({ productionName, onBack, onCreated }: Props) {
   // Saved meeting points for this production
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<string>(OTHER);
@@ -73,7 +72,7 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
       }
     };
     loadLocations();
-  }, [token]);
+  }, []);
 
   // The meeting point currently chosen in the form, or null if incomplete.
   // Includes the map pin: from the map for "Other", or from the saved location.
@@ -288,7 +287,6 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
       {selectedLocationId === OTHER ? (
         <>
           <MapPinPicker
-            token={token}
             pin={otherPin}
             onPinChange={(p) => {
               setOtherPin(p);

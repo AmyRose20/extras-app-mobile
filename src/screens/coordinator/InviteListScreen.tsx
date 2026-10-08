@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Text, TouchableOpacity, View, StyleSheet, RefreshControl } from 'react-native';
-import * as callRequestsApi from '../api/callRequestsApi';
-import { errorMessage } from '../api/client';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GhostButton from '../components/GhostButton';
-import { colors, text } from '../theme';
+import * as callRequestsApi from '../../api/callRequestsApi';
+import { errorMessage } from '../../api/client';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GhostButton from '../../components/GhostButton';
+import { colors, text } from '../../theme';
 
 type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
 
@@ -16,7 +16,6 @@ type InviteRow = {
 };
 
 type Props = {
-  token: string;
   callRequestId: string;
   status: InviteStatus;
   onBack: () => void;
@@ -30,7 +29,7 @@ const STATUS_LABELS: Record<InviteStatus, string> = {
   CANCELLED: 'Cancelled',
 };
 
-function InviteListScreen({ token, callRequestId, status, onBack, onSelectExtra }: Props) {
+function InviteListScreen({ callRequestId, status, onBack, onSelectExtra }: Props) {
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');

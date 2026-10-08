@@ -2,26 +2,25 @@ import React, { useEffect, useState } from 'react';
 import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
-import * as locationsApi from '../api/locationsApi';
-import * as shootDaysApi from '../api/shootDaysApi';
-import * as callRequestsApi from '../api/callRequestsApi';
-import { errorMessage } from '../api/client';
-import { ShootDayDetail, ShootDaySummary, CallRequestSummary, Location } from '../types';
-import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
-import MapPinPicker, { Pin } from '../components/MapPinPicker';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import TextField from '../components/TextField';
-import DetailRow from '../components/DetailRow';
-import SavedPopup from '../components/SavedPopup';
-import { colors, text } from '../theme';
+import * as locationsApi from '../../api/locationsApi';
+import * as shootDaysApi from '../../api/shootDaysApi';
+import * as callRequestsApi from '../../api/callRequestsApi';
+import { errorMessage } from '../../api/client';
+import { ShootDayDetail, ShootDaySummary, CallRequestSummary, Location } from '../../types';
+import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../../dateUtils';
+import MapPinPicker, { Pin } from '../../components/MapPinPicker';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import TextField from '../../components/TextField';
+import DetailRow from '../../components/DetailRow';
+import SavedPopup from '../../components/SavedPopup';
+import { colors, text } from '../../theme';
 
 const OTHER = 'OTHER'; // dropdown value for "Other (enter address)"
 
 type Props = {
-  token: string;
   shootDay: ShootDayDetail | null;
   loading: boolean;
   message: string;
@@ -42,7 +41,6 @@ type Props = {
 };
 
 function ShootDayDetailScreen({
-  token,
   shootDay,
   loading,
   message,
@@ -72,7 +70,7 @@ function ShootDayDetailScreen({
       }
     };
     loadLocations();
-  }, [token]);
+  }, []);
 
   // ----- Edit mode state (only used while editing) -----
   const [isEditing, setIsEditing] = useState(false);
@@ -347,7 +345,6 @@ function ShootDayDetailScreen({
                   {selectedLocationId === OTHER ? (
                     <>
                       <MapPinPicker
-                        token={token}
                         pin={otherPin}
                         onPinChange={(p) => {
                           setOtherPin(p);

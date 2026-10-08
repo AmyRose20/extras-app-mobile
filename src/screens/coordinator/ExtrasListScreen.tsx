@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { SKILL_GROUPS, AVAILABILITY_OPTIONS } from '../constants';
-import { ExtraSummary } from '../types';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import TextField from '../components/TextField';
-import Pager from '../components/Pager';
-import { colors, text } from '../theme';
+import { SKILL_GROUPS, AVAILABILITY_OPTIONS } from '../../constants';
+import { ExtraSummary } from '../../types';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import TextField from '../../components/TextField';
+import Pager from '../../components/Pager';
+import { colors, text } from '../../theme';
 
 const PAGE_SIZE = 10;
 

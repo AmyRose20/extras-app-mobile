@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { ShootDaySummary } from '../types';
-import { formatToDDMMYYYY, formatToHHMM } from '../dateUtils';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GhostButton from '../components/GhostButton';
-import Pager from '../components/Pager';
-import { colors, text } from '../theme';
+import { ShootDaySummary } from '../../types';
+import { formatToDDMMYYYY, formatToHHMM } from '../../dateUtils';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GhostButton from '../../components/GhostButton';
+import Pager from '../../components/Pager';
+import { colors, text } from '../../theme';
 
 const PAGE_SIZE = 6; // shoot days per page
 

@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Text, TouchableOpacity, Image, View, StyleSheet } from 'react-native';
-import * as profilesApi from '../api/profilesApi';
-import { errorMessage } from '../api/client';
-import { ExtraProfileDetail, Tally, BankDetails } from '../types';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GhostButton from '../components/GhostButton';
-import DetailRow from '../components/DetailRow';
-import ActivityCard from '../components/ActivityCard';
-import { colors, text } from '../theme';
+import * as profilesApi from '../../api/profilesApi';
+import { errorMessage } from '../../api/client';
+import { ExtraProfileDetail, Tally, BankDetails } from '../../types';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GhostButton from '../../components/GhostButton';
+import DetailRow from '../../components/DetailRow';
+import ActivityCard from '../../components/ActivityCard';
+import { colors, text } from '../../theme';
 
 function PhotoPreview({ uri, width, height }: { uri: string | null; width: number; height: number }) {
   if (uri) {
@@ -22,7 +22,6 @@ function PhotoPreview({ uri, width, height }: { uri: string | null; width: numbe
 }
 
 type Props = {
-  token: string;
   profile: ExtraProfileDetail | null;
   loading: boolean;
   message: string;
@@ -32,7 +31,7 @@ type Props = {
 
 // Admin's view of one extra. Actions (remove from production, request
 // deletion) live in the hamburger menu, set up in App.tsx.
-function ExtraProfileDetailScreen({ token, profile, loading, message, onBack, tally }: Props) {
+function ExtraProfileDetailScreen({ profile, loading, message, onBack, tally }: Props) {
   // Bank details are only fetched when the coordinator taps "Show bank details"
   const [bank, setBank] = useState<BankDetails | null>(null);
   const [bankLoading, setBankLoading] = useState(false);

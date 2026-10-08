@@ -1,11 +1,11 @@
 import React from 'react';
 import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
-import { DeletionRequestSummary, DialogConfig } from '../types';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GhostButton from '../components/GhostButton';
-import DetailRow from '../components/DetailRow';
-import { colors, text } from '../theme';
+import { DeletionRequestSummary, DialogConfig } from '../../types';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GhostButton from '../../components/GhostButton';
+import DetailRow from '../../components/DetailRow';
+import { colors, text } from '../../theme';
 
 type Props = {
   requests: DeletionRequestSummary[];

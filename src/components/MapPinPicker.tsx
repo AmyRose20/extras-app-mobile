@@ -22,7 +22,6 @@ function pinLabel(p: Pin) {
 }
 
 type Props = {
-  token: string;
   pin: Pin | null;                           // current pin, or null if none dropped yet
   onPinChange: (pin: Pin) => void;           // called whenever the pin moves
   onAddressFound: (address: string) => void; // called with the address for the new spot
@@ -31,7 +30,7 @@ type Props = {
 
 // A small map for choosing an exact meeting point:
 // search for a place, tap the map, or drag the pin.
-function MapPinPicker({ token, pin, onPinChange, onAddressFound, onNameFound }: Props) {
+function MapPinPicker({ pin, onPinChange, onAddressFound, onNameFound }: Props) {
   const mapRef = useRef<MapView>(null);
   const sessionTokenRef = useRef(newSessionToken());
 
@@ -67,7 +66,7 @@ function MapPinPicker({ token, pin, onPinChange, onAddressFound, onNameFound }: 
     }, 300);
 
     return () => clearTimeout(timer); // typing again cancels the previous wait
-  }, [query, token]);
+  }, [query]);
 
   // Moves the map so the pin is in view
   const moveMapTo = (p: Pin) => {

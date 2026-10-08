@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
-import { DialogConfig, Invite, Tally } from '../types';
-import { formatToDDMMYYYY, formatToHHMM, isNextDay } from '../dateUtils';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GhostButton from '../components/GhostButton';
-import Pager from '../components/Pager';
-import ActivityCard from '../components/ActivityCard';
-import { colors, text } from '../theme';
+import { DialogConfig, Invite, Tally } from '../../types';
+import { formatToDDMMYYYY, formatToHHMM, isNextDay } from '../../dateUtils';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GhostButton from '../../components/GhostButton';
+import Pager from '../../components/Pager';
+import ActivityCard from '../../components/ActivityCard';
+import { colors, text } from '../../theme';
 
 type Props = {
   invites: Invite[];

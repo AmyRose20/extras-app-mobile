@@ -1,22 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import * as shootDaysApi from '../api/shootDaysApi';
-import * as callRequestsApi from '../api/callRequestsApi';
-import { errorMessage } from '../api/client';
-import { ShootDaySummary } from '../types';
-import { SKILL_GROUPS } from '../constants';
-import { formatToDDMMYYYY, formatToHHMM } from '../dateUtils';
-import GroupedMultiSelect from '../components/GroupedMultiSelect';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import TextField from '../components/TextField';
-import { colors, text } from '../theme';
+import * as shootDaysApi from '../../api/shootDaysApi';
+import * as callRequestsApi from '../../api/callRequestsApi';
+import { errorMessage } from '../../api/client';
+import { ShootDaySummary } from '../../types';
+import { SKILL_GROUPS } from '../../constants';
+import { formatToDDMMYYYY, formatToHHMM } from '../../dateUtils';
+import GroupedMultiSelect from '../../components/GroupedMultiSelect';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import TextField from '../../components/TextField';
+import { colors, text } from '../../theme';
 
 type Props = {
-  token: string;
   onBack: () => void;
   onCreated: (callRequestId: string) => void;
   initialShootDayId?: string; // pre-select this shoot day (when opened from a shoot day)
@@ -27,7 +26,7 @@ const GENDER_OPTIONS = [
   { label: 'Female', value: 'FEMALE' },
 ];
 
-function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }: Props) {
+function CreateCallRequestScreen({ onBack, onCreated, initialShootDayId }: Props) {
   // ----- Upcoming shoot days for the dropdown -----
   const [shootDays, setShootDays] = useState<ShootDaySummary[]>([]);
   const [shootDaysLoading, setShootDaysLoading] = useState(true);
@@ -56,7 +55,7 @@ function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }
       }
     };
     loadShootDays();
-  }, [token]);
+  }, []);
 
   // ----- The call -----
   const [description, setDescription] = useState('');

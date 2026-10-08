@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Text, TouchableOpacity, StyleSheet } from 'react-native';
-import * as authApi from '../api/authApi';
-import { ApiError, errorMessage } from '../api/client';
-import PasswordHints, { passwordChecks } from '../components/PasswordHints';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import TextField from '../components/TextField';
-import { colors, text } from '../theme';
+import * as authApi from '../../api/authApi';
+import { ApiError, errorMessage } from '../../api/client';
+import PasswordHints, { passwordChecks } from '../../components/PasswordHints';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import TextField from '../../components/TextField';
+import { colors, text } from '../../theme';
 
 // Forgot password, in two stages:
 //   1. enter your email → we email a 6-digit code

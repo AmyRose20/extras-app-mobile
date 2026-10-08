@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { Text, TouchableOpacity, Image, View, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { formatToDDMMYYYY, ageFromDob } from '../dateUtils';
-import { AVAILABILITY_GROUPS, SKILL_GROUPS, LANGUAGE_GROUPS } from '../constants';
-import ChipMultiSelect from '../components/ChipMultiSelect';
-import GroupedMultiSelect from '../components/GroupedMultiSelect';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import TextField from '../components/TextField';
-import SavedPopup from '../components/SavedPopup';
-import { MaskedBankDetails, DeniedProduction } from '../types';
-import { colors, text } from '../theme';
+import { formatToDDMMYYYY, ageFromDob } from '../../dateUtils';
+import { AVAILABILITY_GROUPS, SKILL_GROUPS, LANGUAGE_GROUPS } from '../../constants';
+import ChipMultiSelect from '../../components/ChipMultiSelect';
+import GroupedMultiSelect from '../../components/GroupedMultiSelect';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import TextField from '../../components/TextField';
+import SavedPopup from '../../components/SavedPopup';
+import { MaskedBankDetails, DeniedProduction } from '../../types';
+import { colors, text } from '../../theme';
 
 type Props = {
   name: string;

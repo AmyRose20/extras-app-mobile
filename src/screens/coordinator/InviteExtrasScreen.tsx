@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Text, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
-import * as signupInvitesApi from '../api/signupInvitesApi';
-import { errorMessage } from '../api/client';
-import { SignupInvite, SignupInviteStatus } from '../types';
-import { formatToDDMMYYYY } from '../dateUtils';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import TextField from '../components/TextField';
-import { colors, text } from '../theme';
+import * as signupInvitesApi from '../../api/signupInvitesApi';
+import { errorMessage } from '../../api/client';
+import { SignupInvite, SignupInviteStatus } from '../../types';
+import { formatToDDMMYYYY } from '../../dateUtils';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import TextField from '../../components/TextField';
+import { colors, text } from '../../theme';
 
 // Coordinators email sign-up links to new extras (Phase 3 Part 11).
 // Whoever signs up through a link is added to this production straight away.
 // If the email already has an account, the production is added to it instead.
 type Props = {
-  token: string;
   productionName: string | null;
   onBack: () => void;
 };
@@ -36,7 +35,7 @@ const STATUS_COLOURS: Record<SignupInviteStatus, string> = {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function InviteExtrasScreen({ token, productionName, onBack }: Props) {
+function InviteExtrasScreen({ productionName, onBack }: Props) {
   const production = productionName ?? 'your production';
 
   const [email, setEmail] = useState('');

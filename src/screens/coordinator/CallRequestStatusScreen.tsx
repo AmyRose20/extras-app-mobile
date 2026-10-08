@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Text, TouchableOpacity, StyleSheet } from 'react-native';
-import * as callRequestsApi from '../api/callRequestsApi';
-import { errorMessage } from '../api/client';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import { colors, text } from '../theme';
+import * as callRequestsApi from '../../api/callRequestsApi';
+import { errorMessage } from '../../api/client';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import { colors, text } from '../../theme';
 
 type Tally = {
   needed: number;
@@ -19,13 +19,12 @@ type Tally = {
 type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
 
 type Props = {
-  token: string;
   callRequestId: string;
   onBack: () => void;
   onViewInvites: (status: InviteStatus) => void;
 };
 
-function CallRequestStatusScreen({ token, callRequestId, onBack, onViewInvites }: Props) {
+function CallRequestStatusScreen({ callRequestId, onBack, onViewInvites }: Props) {
   const [tally, setTally] = useState<Tally | null>(null);
   const [description, setDescription] = useState('');
   const [message, setMessage] = useState('');

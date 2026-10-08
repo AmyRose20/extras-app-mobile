@@ -1,24 +1,23 @@
 import React, { useState } from 'react';
 import { Text, TouchableOpacity, StyleSheet } from 'react-native';
-import * as authApi from '../api/authApi';
-import { ApiError, errorMessage } from '../api/client';
-import PasswordHints, { passwordChecks } from '../components/PasswordHints';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import TextField from '../components/TextField';
-import { text } from '../theme';
+import * as authApi from '../../api/authApi';
+import { ApiError, errorMessage } from '../../api/client';
+import PasswordHints, { passwordChecks } from '../../components/PasswordHints';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import TextField from '../../components/TextField';
+import { text } from '../../theme';
 
 // Change password while logged in. Other phones are logged out;
 // this phone gets a fresh login token so it stays logged in.
 type Props = {
-  token: string;
   onChanged: (newToken: string) => void;
   onBack: () => void;
 };
 
-function ChangePasswordScreen({ token, onChanged, onBack }: Props) {
+function ChangePasswordScreen({ onChanged, onBack }: Props) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

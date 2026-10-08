@@ -3,21 +3,20 @@ import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import Share from 'react-native-share';
-import * as shootDaysApi from '../api/shootDaysApi';
-import { getAuthToken, errorMessage } from '../api/client';
-import { Attendee, DialogConfig } from '../types';
-import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay, formatToCalendarKey } from '../dateUtils';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GoldButton from '../components/GoldButton';
-import GhostButton from '../components/GhostButton';
-import { colors, text } from '../theme';
+import * as shootDaysApi from '../../api/shootDaysApi';
+import { getAuthToken, errorMessage } from '../../api/client';
+import { Attendee, DialogConfig } from '../../types';
+import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay, formatToCalendarKey } from '../../dateUtils';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GoldButton from '../../components/GoldButton';
+import GhostButton from '../../components/GhostButton';
+import { colors, text } from '../../theme';
 
 // Attendance for a shoot day that has started: mark anyone who didn't turn up,
 // and record finish times (they start as the estimated wrap time).
 
 type Props = {
-  token: string;
   shootDayId: string;
   productionName: string | null;
   onBack: () => void;
@@ -31,7 +30,7 @@ type AttendanceData = {
 
 const ALL = 'ALL'; // the time picker is open for "Set finish time for everyone"
 
-function AttendanceScreen({ token, shootDayId, productionName, onBack, showDialog }: Props) {
+function AttendanceScreen({ shootDayId, productionName, onBack, showDialog }: Props) {
   const [data, setData] = useState<AttendanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -50,7 +49,7 @@ function AttendanceScreen({ token, shootDayId, productionName, onBack, showDialo
     } finally {
       setLoading(false);
     }
-  }, [token, shootDayId]);
+  }, [shootDayId]);
 
   useEffect(() => {
     loadAttendance();

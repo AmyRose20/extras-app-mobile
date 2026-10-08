@@ -39,7 +39,7 @@ function LoginScreen({ email, setEmail, password, setPassword, message, onLogin,
 
   return (
     <ImageBackground
-      source={require('../assets/images/riverside_studios_logo.png')}
+      source={require('../../assets/images/riverside_studios_logo.png')}
       style={loginStyles.background}
       resizeMode="cover"
       onLayout={handleLayout}

@@ -1,12 +1,12 @@
 import React from 'react';
 import { Text, TouchableOpacity, View, Image, StyleSheet } from 'react-native';
-import { ProductionRequestSummary, DialogConfig } from '../types';
-import { formatToDDMMYYYY } from '../dateUtils';
-import ScreenBackground from '../components/ScreenBackground';
-import GlassCard from '../components/GlassCard';
-import GhostButton from '../components/GhostButton';
-import DetailRow from '../components/DetailRow';
-import { colors, text } from '../theme';
+import { ProductionRequestSummary, DialogConfig } from '../../types';
+import { formatToDDMMYYYY } from '../../dateUtils';
+import ScreenBackground from '../../components/ScreenBackground';
+import GlassCard from '../../components/GlassCard';
+import GhostButton from '../../components/GhostButton';
+import DetailRow from '../../components/DetailRow';
+import { colors, text } from '../../theme';
 
 type Props = {
   productionName: string | null; // the coordinator's production, used in the dialog text

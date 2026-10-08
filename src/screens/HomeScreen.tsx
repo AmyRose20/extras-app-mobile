@@ -20,7 +20,6 @@ import { colors, text } from '../theme';
 type Props = {
   userName: string;
   role: Role;
-  token: string;
   shootDays: ShootDaySummary[];
   invites: Invite[];
   onNavigate: (
@@ -30,7 +29,7 @@ type Props = {
   invitesBadge?: number; // extras: how many NEW invites (red badge on My Invites)
 };
 
-async function registerForPushNotifications(token: string) {
+async function registerForPushNotifications() {
   const messaging = getMessaging(getApp());
 
   // Ask the user for permission to send notifications
@@ -56,11 +55,11 @@ async function registerForPushNotifications(token: string) {
   }
 }
 
-function HomeScreen({ userName, role, token, shootDays, invites, onNavigate, onSelectShootDay, invitesBadge = 0 }: Props) {
+function HomeScreen({ userName, role, shootDays, invites, onNavigate, onSelectShootDay, invitesBadge = 0 }: Props) {
 
   useEffect(() => {
-    registerForPushNotifications(token);
-  }, [token]);
+    registerForPushNotifications();
+  }, []);
 
   // Build the calendar's marked dates differently depending on who's looking:
   // admins see every shoot day, extras only see the ones they've accepted.
