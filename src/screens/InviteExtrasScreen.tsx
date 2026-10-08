@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet, RefreshControl } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { API_URL } from '../api';
+import * as signupInvitesApi from '../api/signupInvitesApi';
+import { errorMessage } from '../api/client';
 import { SignupInvite, SignupInviteStatus } from '../types';
 import { formatToDDMMYYYY } from '../dateUtils';
 
@@ -45,18 +46,10 @@ function InviteExtrasScreen({ token, productionName, onBack }: Props) {
 
   const loadInvites = async () => {
     try {
-      const response = await fetch(`${API_URL}/signup-invites`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setListMessage(data.error || 'Could not load invites.');
-        return;
-      }
-      setInvites(data);
+      setInvites(await signupInvitesApi.getSignupInvites());
       setListMessage('');
     } catch (error) {
-      setListMessage('Something went wrong loading invites.');
+      setListMessage(`Could not load invites: ${errorMessage(error)}`);
     } finally {
       setLoading(false);
     }
@@ -86,21 +79,12 @@ function InviteExtrasScreen({ token, productionName, onBack }: Props) {
 
     setSending(true);
     try {
-      const response = await fetch(`${API_URL}/signup-invites`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ email: trimmed }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setEmailError(data.error || 'Something went wrong. Please try again.');
-        return;
-      }
+      const data = await signupInvitesApi.sendSignupInvite(trimmed);
       setSuccessMessage(data.message);
       setEmail('');
       loadInvites(); // refresh the list so the new invite shows
     } catch (error) {
-      setEmailError('Something went wrong. Please try again.');
+      setEmailError(errorMessage(error));
     } finally {
       setSending(false);
     }

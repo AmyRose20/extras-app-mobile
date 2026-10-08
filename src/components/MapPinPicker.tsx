@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { API_URL } from '../api';
+import * as locationsApi from '../api/locationsApi';
 
 export type Pin = { latitude: number; longitude: number };
 
@@ -57,12 +57,8 @@ function MapPinPicker({ token, pin, onPinChange, onAddressFound, onNameFound }: 
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        const response = await fetch(
-          `${API_URL}/places/autocomplete?input=${encodeURIComponent(text)}&sessionToken=${sessionTokenRef.current}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const data = await response.json();
-        setSuggestions(response.ok ? (data.suggestions || []).slice(0, 3) : []);
+        const data = await locationsApi.getPlaceSuggestions(text, sessionTokenRef.current);
+        setSuggestions((data.suggestions || []).slice(0, 3));
       } catch (error) {
         setSuggestions([]);
       } finally {
@@ -85,15 +81,7 @@ function MapPinPicker({ token, pin, onPinChange, onAddressFound, onNameFound }: 
     setLookupError('');
     setLookingUp(true);
     try {
-      const response = await fetch(
-        `${API_URL}/places/details/${encodeURIComponent(s.placeId)}?sessionToken=${sessionTokenRef.current}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await response.json();
-      if (!response.ok) {
-        setLookupError("Couldn't get that place. Try again, or tap the map.");
-        return;
-      }
+      const data = await locationsApi.getPlaceDetails(s.placeId, sessionTokenRef.current);
 
       const newPin = { latitude: data.latitude, longitude: data.longitude };
       onPinChange(newPin);
@@ -115,13 +103,9 @@ function MapPinPicker({ token, pin, onPinChange, onAddressFound, onNameFound }: 
     setLookupError('');
     setLookingUp(true);
     try {
-      const response = await fetch(
-        `${API_URL}/geocode/reverse?lat=${newPin.latitude}&lng=${newPin.longitude}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await response.json();
+      const data = await locationsApi.getAddressForPin(newPin.latitude, newPin.longitude);
 
-      if (response.ok && data.address) {
+      if (data.address) {
         onAddressFound(data.address);
       } else {
         onAddressFound(pinLabel(newPin)); // no address for this spot (e.g. a field)

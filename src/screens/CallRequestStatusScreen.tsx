@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { API_URL } from '../api';
+import * as callRequestsApi from '../api/callRequestsApi';
+import { errorMessage } from '../api/client';
 
 type Tally = {
   needed: number;
@@ -27,20 +28,12 @@ function CallRequestStatusScreen({ token, callRequestId, onBack, onViewInvites }
 
   const loadStatus = async () => {
     try {
-      const response = await fetch(`${API_URL}/call-requests/${callRequestId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setMessage(`Could not load status: ${data.error}`);
-        return;
-      }
-
+      const data = await callRequestsApi.getCallRequest(callRequestId);
       setTally(data.tally);
       setDescription(data.callRequest.description);
+      setMessage('');
     } catch (error) {
-      setMessage('Something went wrong loading the status.');
+      setMessage(`Could not load status: ${errorMessage(error)}`);
     }
   };
 

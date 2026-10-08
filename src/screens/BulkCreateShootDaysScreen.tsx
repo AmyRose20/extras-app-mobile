@@ -3,7 +3,9 @@ import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, Styl
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import LinearGradient from 'react-native-linear-gradient';
-import { API_URL } from '../api';
+import * as locationsApi from '../api/locationsApi';
+import * as shootDaysApi from '../api/shootDaysApi';
+import { ApiError, errorMessage } from '../api/client';
 import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
 import { Location } from '../types';
 import MapPinPicker, { Pin } from '../components/MapPinPicker';
@@ -56,11 +58,7 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
   useEffect(() => {
     const loadLocations = async () => {
       try {
-        const response = await fetch(`${API_URL}/locations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) return;
-        const data: Location[] = await response.json();
+        const data = await locationsApi.getLocations();
         setLocations(data);
         if (data.length > 0) {
           setSelectedLocationId(data[0].id); // default to the first studio
@@ -106,17 +104,7 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
     longitude: number | null
   ) => {
     try {
-      const response = await fetch(`${API_URL}/locations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      body: JSON.stringify({ name, address, latitude, longitude }),
-      });
-      if (!response.ok) return;
-
-      const saved: Location = await response.json();
+      const saved = await locationsApi.saveLocation({ name, address, latitude, longitude });
       setLocations((prev) =>
         prev.some((l) => l.id === saved.id)
           ? prev // already in the list
@@ -235,36 +223,27 @@ function BulkCreateShootDaysScreen({ token, productionName, onBack, onCreated }:
 
     setSubmitting(true);
     try {
-      const response = await fetch(`${API_URL}/shoot-days/bulk`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          shootDays: daysToCreate.map((day) => ({
-            date: day.date.toISOString(),
-            location: day.location,
-            locationAddress: day.locationAddress,
-            estimatedWrapAt: day.estimatedWrapAt ? day.estimatedWrapAt.toISOString() : null,
-            latitude: day.latitude,
-            longitude: day.longitude,
-          })),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setDateError(data.error);
-        return;
-      }
+      const created = await shootDaysApi.createShootDays(
+        daysToCreate.map((day) => ({
+          date: day.date.toISOString(),
+          location: day.location,
+          locationAddress: day.locationAddress,
+          estimatedWrapAt: day.estimatedWrapAt ? day.estimatedWrapAt.toISOString() : null,
+          latitude: day.latitude,
+          longitude: day.longitude,
+        }))
+      );
 
       setBatchDays([]);
       resetForm();
-      onCreated(data.length); // App shows "Created N shoot days." and opens the list
+      onCreated(created.length); // App shows "Created N shoot days." and opens the list
     } catch (error) {
-      setMessage('Something went wrong creating those shoot days.');
+      if (error instanceof ApiError && error.status !== 0) {
+        // e.g. "Wednesday season 3 already has a shoot day on 22-10-2026" — shown under the date
+        setDateError(error.message);
+      } else {
+        setMessage(errorMessage(error, 'Something went wrong creating those shoot days.'));
+      }
     } finally {
       setSubmitting(false);
     }

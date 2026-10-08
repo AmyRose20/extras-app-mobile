@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import LinearGradient from 'react-native-linear-gradient';
-import { API_URL } from '../api';
+import * as shootDaysApi from '../api/shootDaysApi';
+import * as callRequestsApi from '../api/callRequestsApi';
+import { errorMessage } from '../api/client';
 import { ShootDaySummary } from '../types';
 import { SKILL_GROUPS } from '../constants';
 import { formatToDDMMYYYY, formatToHHMM } from '../dateUtils';
@@ -29,11 +31,7 @@ function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }
   useEffect(() => {
     const loadShootDays = async () => {
       try {
-        const response = await fetch(`${API_URL}/shoot-days`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) return;
-        const data: ShootDaySummary[] = await response.json();
+        const data = await shootDaysApi.getShootDays();
         // Only upcoming shoot days, soonest first
         const upcoming = data
           .filter((d) => !d.isPast)
@@ -112,26 +110,12 @@ function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }
 
     setSubmitting(true);
     try {
-      const response = await fetch(`${API_URL}/call-requests`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          shootDayId,
-          description: description.trim(),
-          quantityNeeded: parseInt(quantityNeeded, 10),
-          criteria,
-        }),
+      const data = await callRequestsApi.createCallRequest({
+        shootDayId,
+        description: description.trim(),
+        quantityNeeded: parseInt(quantityNeeded, 10),
+        criteria,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setMessage(data.error || 'Could not create the call request.');
-        return;
-      }
 
       if (data.matchedCount === 0) {
         // The call request was still created, just with nobody invited
@@ -141,7 +125,7 @@ function CreateCallRequestScreen({ token, onBack, onCreated, initialShootDayId }
 
       onCreated(data.callRequest.id);
     } catch (error) {
-      setMessage('Something went wrong — is the backend running?');
+      setMessage(errorMessage(error, 'Could not create the call request.'));
     } finally {
       setSubmitting(false);
     }

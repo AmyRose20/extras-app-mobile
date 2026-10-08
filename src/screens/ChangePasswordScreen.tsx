@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { API_URL } from '../api';
+import * as authApi from '../api/authApi';
+import { ApiError, errorMessage } from '../api/client';
 import PasswordHints, { passwordChecks } from '../components/PasswordHints';
 
 // Change password while logged in. Other phones are logged out;
@@ -41,21 +42,15 @@ function ChangePasswordScreen({ token, onChanged, onBack }: Props) {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/change-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        // The backend says which box the problem is in
-        if (data.field === 'currentPassword') setCurrentError(data.error);
-        else setNewError(data.error || 'Something went wrong. Please try again.');
-        return;
-      }
+      const data = await authApi.changePassword(currentPassword, newPassword);
       onChanged(data.token);
     } catch (error) {
-      setNewError('Something went wrong. Please try again.');
+      // The backend says which box the problem is in
+      if (error instanceof ApiError && error.data?.field === 'currentPassword') {
+        setCurrentError(error.message);
+      } else {
+        setNewError(errorMessage(error));
+      }
     } finally {
       setLoading(false);
     }

@@ -11,7 +11,7 @@ import {
   getToken,
   AuthorizationStatus,
 } from '@react-native-firebase/messaging';
-import { API_URL } from '../api';
+import * as profilesApi from '../api/profilesApi';
 import Badge from '../components/Badge';
 
 type Props = {
@@ -46,22 +46,10 @@ async function registerForPushNotifications(token: string) {
 
   // Send it to our backend so it's saved against this extra's profile
   try {
-    const response = await fetch(`${API_URL}/profiles/me/fcm-token`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ fcmToken }),
-    });
-
-    if (!response.ok) {
-      console.log('Failed to save FCM token to backend');
-    } else {
-      console.log('FCM token saved to backend');
-    }
+    await profilesApi.saveFcmToken(fcmToken);
+    console.log('FCM token saved to backend');
   } catch (error) {
-    console.log('Error sending FCM token to backend:', error);
+    console.log('Could not save FCM token to backend:', error);
   }
 }
 

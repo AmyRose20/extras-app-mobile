@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Screen, Role, Invite, Production, PendingProduction, DeniedProduction, DialogConfig, MaskedBankDetails, ExtraSummary, ExtraProfileDetail, Tally, ShootDaySummary, ShootDayDetail, CallRequestSummary, DeletionRequestSummary, ProductionRequestSummary } from './src/types';
-import { API_URL } from './src/api';
+import { setAuthToken, setPasswordChangedHandler, errorMessage } from './src/api/client';
+import * as authApi from './src/api/authApi';
+import * as profilesApi from './src/api/profilesApi';
+import * as invitesApi from './src/api/invitesApi';
+import * as requestsApi from './src/api/requestsApi';
+import * as shootDaysApi from './src/api/shootDaysApi';
+import * as callRequestsApi from './src/api/callRequestsApi';
+import * as badgesApi from './src/api/badgesApi';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { getStorage, ref, putFile, getDownloadURL } from '@react-native-firebase/storage';
 import LoginScreen from './src/screens/LoginScreen';
@@ -156,21 +163,11 @@ function AppContent(): React.JSX.Element {
   const handleLogin = async () => {
     setLoginNotice('');
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setMessage(`Login failed: ${data.error}`);
-        return;
-      }
+      const data = await authApi.login(email, password);
 
       await signInWithCustomToken(getAuth(), data.firebaseToken);
 
+      setAuthToken(data.token); // every API call from now on sends this token
       setToken(data.token);
       setUserId(data.user.id);
       setUserName(data.user.name);
@@ -178,13 +175,14 @@ function AppContent(): React.JSX.Element {
       setCoordinatorProduction(data.user.production?.name ?? null);
       setScreen('home');
     } catch (error) {
-      setMessage('Something went wrong — is the backend running?');
+      setMessage(`Login failed: ${errorMessage(error)}`);
     }
   };
 
     const handleLogout = async () => {
     await signOut(getAuth());
     setToken('');
+    setAuthToken(''); // forget the token, so nothing is sent with this login any more
     setUserId('');
     setUserName('');
     setEmail('');
@@ -204,30 +202,15 @@ function AppContent(): React.JSX.Element {
     setBadgeCounts({ invites: 0, deletionRequests: 0, productionRequests: 0 });
   };
 
-  // If the password is changed on another phone, every request from THIS phone
-  // gets a 401 with code PASSWORD_CHANGED. Watch all requests for that, and
-  // send the user back to the login screen with a clear message.
+  // If the password is changed on another phone, the backend rejects this phone's
+  // old login. apiRequest (src/api/client.ts) spots that and calls this, which
+  // sends the user back to the login screen with a clear message.
   useEffect(() => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async (input: any, init?: any) => {
-      const response = await originalFetch(input, init);
-      if (response.status === 401) {
-        try {
-          const data = await response.clone().json(); // clone, so the screen can still read it too
-          if (data.code === 'PASSWORD_CHANGED') {
-            await handleLogout();
-            setMessage('Your password was changed. Please log in again.');
-          }
-        } catch (error) {
-          // Not JSON, so not ours to handle
-        }
-      }
-      return response;
-    }) as typeof fetch;
-
-    return () => {
-      globalThis.fetch = originalFetch; // put the normal fetch back if App ever unmounts
-    };
+    setPasswordChangedHandler(async () => {
+      await handleLogout();
+      setMessage('Your password was changed. Please log in again.');
+    });
+    return () => setPasswordChangedHandler(null); // stop listening if App ever unmounts
   }, []);
 
   const pickImage = async (onPicked: (uri: string) => void) => {
@@ -256,15 +239,7 @@ function AppContent(): React.JSX.Element {
     setProfileLoading(true);
     setProfileMessage('');
     try {
-      const response = await fetch(`${API_URL}/profiles/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setProfileMessage(`Could not load profile: ${data.error}`);
-        return;
-      }
+      const data = await profilesApi.getMyProfile();
 
       setDateOfBirth(data.dateOfBirth ? data.dateOfBirth.slice(0, 10) : '');
       setGender(data.gender ?? '');
@@ -302,17 +277,13 @@ function AppContent(): React.JSX.Element {
       setProductionsError('');
 
       // Full list of productions, used for the chips in edit mode
-      const prodResponse = await fetch(`${API_URL}/productions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (prodResponse.ok) {
-        setAllProductions(await prodResponse.json());
-      } else {
+      try {
+        setAllProductions(await profilesApi.getProductions());
+      } catch (error) {
         setProductionsError('Could not load productions.');
       }
     } catch (error) {
-      console.error('loadProfile failed:', error);
-      setProfileMessage('Something went wrong loading your profile.');
+      setProfileMessage(`Could not load profile: ${errorMessage(error)}`);
     } finally {
       setProfileLoading(false);
     }
@@ -327,24 +298,15 @@ function AppContent(): React.JSX.Element {
 
   const loadTally = async () => {
     try {
-      const response = await fetch(`${API_URL}/invites/tally/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        return;
-      }
-
-      setTally(data);
+      setTally(await invitesApi.getMyTally());
     } catch (error) {
       // Non-critical — the invites screen just doesn't show the widget if this fails.
     }
   };
 
   const saveProfile = async () => {
-  setProfileMessage('');
-  setContactError('');
+    setProfileMessage('');
+    setContactError('');
 
     // Both photos are mandatory — either already saved, or picked just now
     if (!facePhotoUrl && !pendingFacePhoto) {
@@ -358,16 +320,16 @@ function AppContent(): React.JSX.Element {
     }
 
     if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
-        setContactError('Please enter a valid email address.');
-        return;
-    }   
+      setContactError('Please enter a valid email address.');
+      return;
+    }
 
-  if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
-    setContactError('Please enter a valid phone number (digits, spaces, dashes, and an optional leading + only).');
-    return;
-  }
+    if (phoneNumber && !/^[+]?[\d\s-]{7,15}$/.test(phoneNumber)) {
+      setContactError('Please enter a valid phone number (digits, spaces, dashes, and an optional leading + only).');
+      return;
+    }
 
-if (myProductionNames.length === 0) {
+    if (myProductionNames.length === 0) {
       setProductionsError('Select at least one production.');
       return;
     }
@@ -386,25 +348,17 @@ if (myProductionNames.length === 0) {
         .filter((p) => myProductionNames.includes(p.name))
         .map((p) => p.id);
 
-      const prodResponse = await fetch(`${API_URL}/profiles/me/productions`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ productionIds: selectedProductionIds }),
-      });
-
-      const prodData = await prodResponse.json();
-      if (!prodResponse.ok) {
-        setProductionsError(prodData.error);
+      try {
+        const myProductions = await profilesApi.updateMyProductions(selectedProductionIds);
+        // Keep the "waiting for approval" / "not approved" notes up to date
+        setPendingProductionNames((myProductions.pendingProductions ?? []).map((p) => p.name));
+        setDeniedProductions(myProductions.deniedProductions ?? []);
+      } catch (error) {
+        setProductionsError(errorMessage(error));
         return;
       }
-      // Keep the "waiting for approval" / "not approved" notes up to date
-      setPendingProductionNames((prodData.pendingProductions ?? []).map((p: PendingProduction) => p.name));
-      setDeniedProductions(prodData.deniedProductions ?? []);
 
-      // 2) Then photos + the rest of the profile, as before
+      // 2) Then photos + the rest of the profile
       setUploadingPhoto(true);
 
       let newFacePhotoUrl = facePhotoUrl;
@@ -419,17 +373,13 @@ if (myProductionNames.length === 0) {
 
       setUploadingPhoto(false);
 
-      const response = await fetch(`${API_URL}/profiles/me`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      let data;
+      try {
+        data = await profilesApi.updateMyProfile({
           dateOfBirth: dateOfBirth || null,
           gender: gender || null,
           heightCm: heightCm ? parseInt(heightCm, 10) : null,
-                    skills: [
+          skills: [
             ...skills,
             ...otherSkills.split(',').map((s) => s.trim()).filter((s) => s.length > 0),
           ],
@@ -452,17 +402,14 @@ if (myProductionNames.length === 0) {
             : editingBank
             ? { iban: ibanInput, bic: bicInput, accountHolderName: accountNameInput }
             : {}),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
+        });
+      } catch (error) {
         // Bank errors show under the bank fields; anything else at the bottom
-        if (/IBAN|BIC|account holder/i.test(data.error ?? '')) {
-          setBankError(data.error);
+        const text = errorMessage(error);
+        if (/IBAN|BIC|account holder/i.test(text)) {
+          setBankError(text);
         } else {
-          setProfileMessage(`Save failed: ${data.error}`);
+          setProfileMessage(`Save failed: ${text}`);
         }
         return;
       }
@@ -481,56 +428,33 @@ if (myProductionNames.length === 0) {
       setShowSavedPopup(true);
       setTimeout(() => setShowSavedPopup(false), 3000);
     } catch (error) {
+      // e.g. a photo upload to Firebase failed
       setUploadingPhoto(false);
       setProfileMessage('Something went wrong saving your profile.');
     }
   };
 
   const requestAccountDeletion = async () => {
-  setDeletionActionLoading(true);
-  setProfileMessage('');
-  try {
-    const response = await fetch(`${API_URL}/deletion-requests/me`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({}),
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      setProfileMessage(`Could not request deletion: ${data.error}`);
-      return;
+    setDeletionActionLoading(true);
+    setProfileMessage('');
+    try {
+      const data = await requestsApi.requestMyDeletion();
+      setDeletionRequestStatus(data.deletionRequestStatus);
+    } catch (error) {
+      setProfileMessage(`Could not request deletion: ${errorMessage(error)}`);
+    } finally {
+      setDeletionActionLoading(false);
     }
-
-    setDeletionRequestStatus(data.deletionRequestStatus);
-  } catch (error) {
-    setProfileMessage('Something went wrong requesting deletion.');
-  } finally {
-    setDeletionActionLoading(false);
-  }
-};
+  };
 
   const cancelAccountDeletion = async () => {
     setDeletionActionLoading(true);
     setProfileMessage('');
     try {
-      const response = await fetch(`${API_URL}/deletion-requests/me`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setProfileMessage(`Could not cancel deletion request: ${data.error}`);
-        return;
-      }
-
+      const data = await requestsApi.cancelMyDeletion();
       setDeletionRequestStatus(data.deletionRequestStatus);
     } catch (error) {
-      setProfileMessage('Something went wrong cancelling the deletion request.');
+      setProfileMessage(`Could not cancel deletion request: ${errorMessage(error)}`);
     } finally {
       setDeletionActionLoading(false);
     }
@@ -545,44 +469,20 @@ if (myProductionNames.length === 0) {
     setInvitesLoading(true);
     setInvitesMessage('');
     try {
-      const response = await fetch(`${API_URL}/invites/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setInvitesMessage(`Could not load invites: ${data.error}`);
-        return;
-      }
-
-      setInvites(data);
+      setInvites(await invitesApi.getMyInvites());
     } catch (error) {
-      setInvitesMessage('Something went wrong loading your invites.');
+      setInvitesMessage(`Could not load invites: ${errorMessage(error)}`);
     } finally {
       setInvitesLoading(false);
     }
   };
 
-  const respondToInvite = async (inviteId: string, status: 'ACCEPTED' | 'DECLINED' | 'CANCELLED') => {
+  const respondToInvite = async (inviteId: string, status: invitesApi.InviteAnswer) => {
     try {
-      const response = await fetch(`${API_URL}/invites/${inviteId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setInvitesMessage(`Could not update invite: ${data.error}`);
-        return;
-      }
-
+      await invitesApi.respondToInvite(inviteId, status);
       loadInvites();
     } catch (error) {
-      setInvitesMessage('Something went wrong updating that invite.');
+      setInvitesMessage(`Could not update invite: ${errorMessage(error)}`);
     }
   };
 
@@ -590,28 +490,17 @@ if (myProductionNames.length === 0) {
     setExtrasLoading(true);
     setExtrasMessage('');
     try {
-      const params = new URLSearchParams();
-      if (skillFilter.length > 0) params.append('skill', skillFilter.join(','));
-      if (genderFilter) params.append('gender', genderFilter);
-      if (availabilityFilter.length > 0) params.append('availability', availabilityFilter.join(','));
-      if (minAgeFilter) params.append('minAge', minAgeFilter);
-      if (maxAgeFilter) params.append('maxAge', maxAgeFilter);
-      if (nameFilter.trim()) params.append('name', nameFilter.trim());
-      const query = params.toString() ? `?${params.toString()}` : '';
-
-      const response = await fetch(`${API_URL}/profiles${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const data = await profilesApi.getExtras({
+        skills: skillFilter,
+        gender: genderFilter,
+        availability: availabilityFilter,
+        minAge: minAgeFilter,
+        maxAge: maxAgeFilter,
+        name: nameFilter,
       });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setExtrasMessage(`Could not load extras: ${data.error}`);
-        return;
-      }
-
       setExtras(data);
     } catch (error) {
-      setExtrasMessage('Something went wrong loading extras.');
+      setExtrasMessage(`Could not load extras: ${errorMessage(error)}`);
     } finally {
       setExtrasLoading(false);
     }
@@ -622,103 +511,47 @@ if (myProductionNames.length === 0) {
     setExtraDetailMessage('');
     setSelectedExtraProfile(null);
     try {
-      const response = await fetch(`${API_URL}/profiles/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setExtraDetailMessage(`Could not load profile: ${data.error}`);
-        return;
-      }
-
-      setSelectedExtraProfile(data);
+      setSelectedExtraProfile(await profilesApi.getExtraProfile(id));
     } catch (error) {
-      setExtraDetailMessage('Something went wrong loading that profile.');
+      setExtraDetailMessage(`Could not load profile: ${errorMessage(error)}`);
     } finally {
       setExtraDetailLoading(false);
     }
   };
 
   const loadDeletionRequests = async () => {
-  setDeletionRequestsLoading(true);
-  setDeletionRequestsMessage('');
-  try {
-    const response = await fetch(`${API_URL}/deletion-requests`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      setDeletionRequestsMessage(`Could not load deletion requests: ${data.error}`);
-      return;
+    setDeletionRequestsLoading(true);
+    setDeletionRequestsMessage('');
+    try {
+      setDeletionRequestsList(await requestsApi.getDeletionRequests());
+    } catch (error) {
+      setDeletionRequestsMessage(`Could not load deletion requests: ${errorMessage(error)}`);
+    } finally {
+      setDeletionRequestsLoading(false);
     }
+  };
 
-    setDeletionRequestsList(data);
-  } catch (error) {
-    setDeletionRequestsMessage('Something went wrong loading deletion requests.');
-  } finally {
-    setDeletionRequestsLoading(false);
-  }
-};
-
-const approveDeletionRequest = async (userId: string) => {
-  try {
-    const response = await fetch(`${API_URL}/deletion-requests/${userId}/approve`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      setDeletionRequestsMessage(`Could not approve: ${data.error}`);
-      return;
+  // Approve or deny — both remove the request from the list when done
+  const reviewDeletionRequest = async (userId: string, action: 'approve' | 'deny') => {
+    try {
+      await requestsApi.reviewDeletionRequest(userId, action);
+      setDeletionRequestsList((prev) => prev.filter((r) => r.id !== userId));
+    } catch (error) {
+      setDeletionRequestsMessage(`Could not ${action}: ${errorMessage(error)}`);
     }
+  };
 
-    setDeletionRequestsList((prev) => prev.filter((r) => r.id !== userId));
-  } catch (error) {
-    setDeletionRequestsMessage('Something went wrong approving that request.');
-  }
-};
-
-const denyDeletionRequest = async (userId: string) => {
-  try {
-    const response = await fetch(`${API_URL}/deletion-requests/${userId}/deny`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      setDeletionRequestsMessage(`Could not deny: ${data.error}`);
-      return;
-    }
-
-    setDeletionRequestsList((prev) => prev.filter((r) => r.id !== userId));
-  } catch (error) {
-    setDeletionRequestsMessage('Something went wrong denying that request.');
-  }
-};
-
+  const approveDeletionRequest = (userId: string) => reviewDeletionRequest(userId, 'approve');
+  const denyDeletionRequest = (userId: string) => reviewDeletionRequest(userId, 'deny');
 
   // ----- Production requests (extras asking to join my production) -----
   const loadProductionRequests = async () => {
     setProductionRequestsLoading(true);
     setProductionRequestsMessage('');
     try {
-      const response = await fetch(`${API_URL}/production-requests`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setProductionRequestsMessage(`Could not load requests: ${data.error}`);
-        return;
-      }
-
-      setProductionRequestsList(data);
+      setProductionRequestsList(await requestsApi.getProductionRequests());
     } catch (error) {
-      setProductionRequestsMessage('Something went wrong loading requests.');
+      setProductionRequestsMessage(`Could not load requests: ${errorMessage(error)}`);
     } finally {
       setProductionRequestsLoading(false);
     }
@@ -728,31 +561,17 @@ const denyDeletionRequest = async (userId: string) => {
   const reviewProductionRequest = async (requestId: string, action: 'approve' | 'deny') => {
     setProductionRequestsMessage('');
     try {
-      const response = await fetch(`${API_URL}/production-requests/${requestId}/${action}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setProductionRequestsMessage(`Could not ${action}: ${data.error}`);
-        return;
-      }
-
+      await requestsApi.reviewProductionRequest(requestId, action);
       setProductionRequestsList((prev) => prev.filter((r) => r.id !== requestId));
     } catch (error) {
-      setProductionRequestsMessage(`Something went wrong trying to ${action} that request.`);
+      setProductionRequestsMessage(`Could not ${action}: ${errorMessage(error)}`);
     }
   };
- 
+
   // ----- Notification badges -----
   const loadBadgeCounts = async () => {
     try {
-      const response = await fetch(`${API_URL}/badges`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) return; // badges are a nice-to-have: fail quietly
-      const data = await response.json();
+      const data = await badgesApi.getBadgeCounts();
       setBadgeCounts({
         invites: data.invites ?? 0,
         deletionRequests: data.deletionRequests ?? 0,
@@ -764,77 +583,41 @@ const denyDeletionRequest = async (userId: string) => {
   };
 
   // Opening a screen clears its badge (until something newer arrives)
-  const markBadgeSeen = async (type: 'invites' | 'deletionRequests' | 'productionRequests') => {
+  const markBadgeSeen = async (type: badgesApi.BadgeType) => {
     setBadgeCounts((prev) => ({ ...prev, [type]: 0 })); // clear it on screen straight away
     try {
-      await fetch(`${API_URL}/badges/seen/${type}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await badgesApi.markBadgeSeen(type);
     } catch (error) {
       // Non-critical — worst case the badge reappears next time counts load.
     }
   };
 
-const adminRequestDeletionForExtra = async (userId: string) => {
-  try {
-    const response = await fetch(`${API_URL}/deletion-requests/${userId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({}),
-    });
-    const data = await response.json();
-
-    if (!response.ok) {
-      setExtraDetailMessage(`Could not request deletion: ${data.error}`);
-      return;
+  const adminRequestDeletionForExtra = async (userId: string) => {
+    try {
+      await requestsApi.requestDeletionForExtra(userId);
+      if (selectedExtraProfile) {
+        loadExtraProfile(selectedExtraProfile.id);
+      }
+    } catch (error) {
+      setExtraDetailMessage(`Could not request deletion: ${errorMessage(error)}`);
     }
-
-    if (selectedExtraProfile) {
-      loadExtraProfile(selectedExtraProfile.id);
-    }
-  } catch (error) {
-    setExtraDetailMessage('Something went wrong requesting deletion.');
-  }
-};
+  };
 
   const removeExtraFromMyProduction = async (extraProfileId: string) => {
     setExtraDetailMessage('');
     try {
-      const response = await fetch(`${API_URL}/profiles/${extraProfileId}/production`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        // e.g. "This is the extra's only production. Use a deletion request instead."
-        setExtraDetailMessage(data.error);
-        return;
-      }
-// e.g. "Removed from Wednesday season 3"
+      await profilesApi.removeExtraFromMyProduction(extraProfileId);
       setScreen(extraProfileReturnTo);
     } catch (error) {
-      setExtraDetailMessage('Something went wrong removing this extra.');
+      // e.g. "This is the extra's only production. Use a deletion request instead."
+      setExtraDetailMessage(errorMessage(error));
     }
   };
 
   const loadExtraTally = async (extraProfileId: string) => {
     setExtraTally(null);
     try {
-      const response = await fetch(`${API_URL}/invites/tally/${extraProfileId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        return;
-      }
-
-      setExtraTally(data);
+      setExtraTally(await invitesApi.getExtraTally(extraProfileId));
     } catch (error) {
       // Non-critical — the admin screen just doesn't show the activity widget if this fails.
     }
@@ -851,19 +634,9 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     setShootDaysLoading(true);
     setShootDaysMessage('');
     try {
-      const response = await fetch(`${API_URL}/shoot-days`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setShootDaysMessage(`Could not load shoot days: ${data.error}`);
-        return;
-      }
-
-      setShootDays(data);
+      setShootDays(await shootDaysApi.getShootDays());
     } catch (error) {
-      setShootDaysMessage('Something went wrong loading shoot days.');
+      setShootDaysMessage(`Could not load shoot days: ${errorMessage(error)}`);
     } finally {
       setShootDaysLoading(false);
     }
@@ -875,19 +648,9 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     setSelectedShootDay(null);
     setEditingCallRequestId(null);
     try {
-      const response = await fetch(`${API_URL}/shoot-days/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setShootDayDetailMessage(`Could not load shoot day: ${data.error}`);
-        return;
-      }
-
-      setSelectedShootDay(data);
+      setSelectedShootDay(await shootDaysApi.getShootDay(id));
     } catch (error) {
-      setShootDayDetailMessage('Something went wrong loading that shoot day.');
+      setShootDayDetailMessage(`Could not load shoot day: ${errorMessage(error)}`);
     } finally {
       setShootDayDetailLoading(false);
     }
@@ -915,31 +678,16 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     if (!editingCallRequestId || !selectedShootDay) return;
     setShootDayDetailMessage('');
     try {
-      const response = await fetch(`${API_URL}/call-requests/${editingCallRequestId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          description: editDescription,
-          quantityNeeded: parseInt(editQuantity, 10),
-        }),
+      await callRequestsApi.updateCallRequest(editingCallRequestId, {
+        description: editDescription,
+        quantityNeeded: parseInt(editQuantity, 10),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setShootDayDetailMessage(`Could not update call request: ${data.error}`);
-        return;
-      }
-
       setEditingCallRequestId(null);
       setEditDescription('');
       setEditQuantity('');
       loadShootDayDetail(selectedShootDay.id);
     } catch (error) {
-      setShootDayDetailMessage('Something went wrong updating that call request.');
+      setShootDayDetailMessage(`Could not update call request: ${errorMessage(error)}`);
     }
   };
 
@@ -960,17 +708,9 @@ const adminRequestDeletionForExtra = async (userId: string) => {
     setExtrasLoading(true);
     setExtrasMessage('');
     try {
-      const response = await fetch(`${API_URL}/profiles`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setExtrasMessage(`Could not load extras: ${data.error}`);
-        return;
-      }
-      setExtras(data);
+      setExtras(await profilesApi.getExtras()); // no filters = everyone on my production
     } catch (error) {
-      setExtrasMessage('Something went wrong loading extras.');
+      setExtrasMessage(`Could not load extras: ${errorMessage(error)}`);
     } finally {
       setExtrasLoading(false);
     }
@@ -1064,6 +804,7 @@ const adminRequestDeletionForExtra = async (userId: string) => {
           token={token}
           onBack={() => setScreen('home')}
           onChanged={(newToken) => {
+            setAuthToken(newToken); // the API calls use the fresh token too
             setToken(newToken); // this phone stays logged in; other phones are logged out
             setScreen('home');
             setDialog({

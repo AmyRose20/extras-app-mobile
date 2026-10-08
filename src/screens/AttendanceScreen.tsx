@@ -4,7 +4,8 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 import LinearGradient from 'react-native-linear-gradient';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import Share from 'react-native-share';
-import { API_URL } from '../api';
+import * as shootDaysApi from '../api/shootDaysApi';
+import { getAuthToken, errorMessage } from '../api/client';
 import { Attendee, DialogConfig } from '../types';
 import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay, formatToCalendarKey } from '../dateUtils';
 
@@ -39,17 +40,9 @@ const [exporting, setExporting] = useState(false);
     setLoading(true);
     setMessage('');
     try {
-      const response = await fetch(`${API_URL}/shoot-days/${shootDayId}/attendance`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        setMessage(result.error || 'Could not load attendance.');
-        return;
-      }
-      setData(result);
+      setData(await shootDaysApi.getAttendance(shootDayId));
     } catch (error) {
-      setMessage('Something went wrong loading attendance.');
+      setMessage(errorMessage(error, 'Could not load attendance.'));
     } finally {
       setLoading(false);
     }
@@ -64,22 +57,13 @@ const [exporting, setExporting] = useState(false);
     setSavingId(inviteId);
     setMessage('');
     try {
-      const response = await fetch(`${API_URL}/shoot-days/${shootDayId}/attendance/${inviteId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
-      });
-      const updated = await response.json();
-      if (!response.ok) {
-        setMessage(updated.error || 'Could not save that change.');
-        return;
-      }
+      const updated = await shootDaysApi.updateAttendee(shootDayId, inviteId, body);
       // Swap the updated row into the list
       setData((prev) =>
         prev ? { ...prev, attendees: prev.attendees.map((a) => (a.inviteId === inviteId ? updated : a)) } : prev
       );
     } catch (error) {
-      setMessage('Something went wrong saving attendance.');
+      setMessage(errorMessage(error, 'Could not save that change.'));
     } finally {
       setSavingId(null);
     }
@@ -90,19 +74,10 @@ const [exporting, setExporting] = useState(false);
     setSavingId(ALL);
     setMessage('');
     try {
-      const response = await fetch(`${API_URL}/shoot-days/${shootDayId}/finish-time`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ finishedAt }),
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        setMessage(result.error || 'Could not set the finish time.');
-        return;
-      }
+      await shootDaysApi.setFinishTimeForAll(shootDayId, finishedAt);
       await loadAttendance();
     } catch (error) {
-      setMessage('Something went wrong setting the finish time.');
+      setMessage(errorMessage(error, 'Could not set the finish time.'));
     } finally {
       setSavingId(null);
     }
@@ -167,8 +142,8 @@ const [exporting, setExporting] = useState(false);
       // Download the file (with our login token) straight into the cache
       const response = await ReactNativeBlobUtil.config({ path }).fetch(
         'GET',
-        `${API_URL}/shoot-days/${shootDayId}/payroll`,
-        { Authorization: `Bearer ${token}` }
+        shootDaysApi.payrollUrl(shootDayId),
+        { Authorization: `Bearer ${getAuthToken()}` }
       );
 
       if (response.info().status !== 200) {

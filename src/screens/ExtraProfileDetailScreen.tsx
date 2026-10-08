@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, Text, TouchableOpacity, Image, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { API_URL } from '../api';
+import * as profilesApi from '../api/profilesApi';
+import { errorMessage } from '../api/client';
 import { ExtraProfileDetail, Tally, BankDetails } from '../types';
 
 function PhotoPreview({ uri, width, height }: { uri: string | null; width: number; height: number }) {
@@ -43,17 +44,9 @@ function ExtraProfileDetailScreen({ token, profile, loading, message, onBack, ta
     setBankLoading(true);
     setBankError('');
     try {
-      const response = await fetch(`${API_URL}/profiles/${profile.id}/bank-details`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setBankError(data.error || 'Could not load bank details.');
-        return;
-      }
-      setBank(data);
+      setBank(await profilesApi.getBankDetails(profile.id));
     } catch (error) {
-      setBankError('Could not load bank details.');
+      setBankError(errorMessage(error, 'Could not load bank details.'));
     } finally {
       setBankLoading(false);
     }

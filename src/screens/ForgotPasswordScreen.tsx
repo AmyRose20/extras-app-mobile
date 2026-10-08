@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, StyleSheet } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { API_URL } from '../api';
+import * as authApi from '../api/authApi';
+import { ApiError, errorMessage } from '../api/client';
 import PasswordHints, { passwordChecks } from '../components/PasswordHints';
 
 // Forgot password, in two stages:
@@ -38,20 +39,11 @@ function ForgotPasswordScreen({ initialEmail, onBack, onDone }: Props) {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setEmailError(data.error || 'Something went wrong. Please try again.');
-        return;
-      }
+      const data = await authApi.requestPasswordReset(email.trim());
       setNotice(data.message);
       setStage('code');
     } catch (error) {
-      setEmailError('Something went wrong. Is the backend running?');
+      setEmailError(errorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -77,21 +69,15 @@ function ForgotPasswordScreen({ initialEmail, onBack, onDone }: Props) {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), code: code.trim(), newPassword }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        // The backend says which box the problem is in
-        if (data.field === 'newPassword') setPasswordError(data.error);
-        else setCodeError(data.error || 'Something went wrong. Please try again.');
-        return;
-      }
+      await authApi.resetPassword(email.trim(), code.trim(), newPassword);
       onDone(email.trim());
     } catch (error) {
-      setCodeError('Something went wrong. Is the backend running?');
+      // The backend says which box the problem is in
+      if (error instanceof ApiError && error.data?.field === 'newPassword') {
+        setPasswordError(error.message);
+      } else {
+        setCodeError(errorMessage(error));
+      }
     } finally {
       setLoading(false);
     }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, ScrollView, Text, TouchableOpacity, View, StyleSheet, RefreshControl } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { API_URL } from '../api';
+import * as callRequestsApi from '../api/callRequestsApi';
+import { errorMessage } from '../api/client';
 
 type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
 
@@ -35,15 +36,7 @@ function InviteListScreen({ token, callRequestId, status, onBack, onSelectExtra 
   // Loads the extras with this status. Used when the screen opens, and when the list is pulled down.
   const loadInvites = async () => {
     try {
-      const response = await fetch(`${API_URL}/call-requests/${callRequestId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setMessage(`Could not load responses: ${data.error}`);
-        return;
-      }
+      const data = await callRequestsApi.getCallRequest(callRequestId);
 
       const filtered = data.callRequest.invites
         .filter((invite: any) => invite.status === status)
@@ -56,7 +49,7 @@ function InviteListScreen({ token, callRequestId, status, onBack, onSelectExtra 
       setInvites(filtered);
       setMessage('');
     } catch (error) {
-      setMessage('Something went wrong loading responses.');
+      setMessage(`Could not load responses: ${errorMessage(error)}`);
     } finally {
       setLoading(false); // runs whether it worked or not
     }

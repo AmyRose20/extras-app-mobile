@@ -3,7 +3,10 @@ import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View, Styl
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
 import LinearGradient from 'react-native-linear-gradient';
-import { API_URL } from '../api';
+import * as locationsApi from '../api/locationsApi';
+import * as shootDaysApi from '../api/shootDaysApi';
+import * as callRequestsApi from '../api/callRequestsApi';
+import { errorMessage } from '../api/client';
 import { ShootDayDetail, ShootDaySummary, CallRequestSummary, Location } from '../types';
 import { formatToDDMMYYYY, formatToHHMM, computeWrap, isNextDay } from '../dateUtils';
 import MapPinPicker, { Pin } from '../components/MapPinPicker';
@@ -56,10 +59,7 @@ function ShootDayDetailScreen({
   useEffect(() => {
     const loadLocations = async () => {
       try {
-        const response = await fetch(`${API_URL}/locations`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (response.ok) setLocations(await response.json());
+        setLocations(await locationsApi.getLocations());
       } catch (error) {
         // If this fails, the dropdown just offers "Other"
       }
@@ -203,24 +203,17 @@ function ShootDayDetailScreen({
       // Optionally save an "Other" location for next time (not critical if it fails)
       if (selectedLocationId === OTHER && saveForNextTime) {
         try {
-          const locResponse = await fetch(`${API_URL}/locations`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({
-              name: meetingPoint.name,
-              address: meetingPoint.address,
-              latitude: meetingPoint.latitude,
-              longitude: meetingPoint.longitude,
-            }),
+          const saved = await locationsApi.saveLocation({
+            name: meetingPoint.name,
+            address: meetingPoint.address,
+            latitude: meetingPoint.latitude,
+            longitude: meetingPoint.longitude,
           });
-          if (locResponse.ok) {
-            const saved: Location = await locResponse.json();
-            setLocations((prev) =>
-              prev.some((l) => l.id === saved.id)
-                ? prev
-                : [...prev, saved].sort((a, b) => a.name.localeCompare(b.name))
-            );
-          }
+          setLocations((prev) =>
+            prev.some((l) => l.id === saved.id)
+              ? prev
+              : [...prev, saved].sort((a, b) => a.name.localeCompare(b.name))
+          );
         } catch (error) {
           // ignore — the shoot day still keeps its own copy of the address
         }
@@ -228,31 +221,22 @@ function ShootDayDetailScreen({
 
       // Send everything; the backend works out what actually changed
       // (and only notifies extras about real changes)
-      const response = await fetch(`${API_URL}/shoot-days/${shootDay.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          date: editDateTime.toISOString(),
-          estimatedWrapAt: currentWrap ? currentWrap.toISOString() : null,
-          location: meetingPoint.name,
-          locationAddress: meetingPoint.address,
-          latitude: meetingPoint.latitude,
-          longitude: meetingPoint.longitude,
-        }),
+      await shootDaysApi.updateShootDay(shootDay.id, {
+        date: editDateTime.toISOString(),
+        estimatedWrapAt: currentWrap ? currentWrap.toISOString() : null,
+        location: meetingPoint.name,
+        locationAddress: meetingPoint.address,
+        latitude: meetingPoint.latitude,
+        longitude: meetingPoint.longitude,
       });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setSaveError(data.error);
-        return;
-      }
 
       setIsEditing(false);
       setShowSavedPopup(true);
       setTimeout(() => setShowSavedPopup(false), 3000);
       onSaved(); // App reloads the shoot day so view mode shows the new details
     } catch (error) {
-      setSaveError('Something went wrong saving your changes.');
+      // e.g. "Wednesday season 3 already has a shoot day on 22-10-2026"
+      setSaveError(errorMessage(error, 'Something went wrong saving your changes.'));
     } finally {
       setSaving(false);
     }
@@ -274,14 +258,7 @@ function ShootDayDetailScreen({
     setCopyTargets([]);
     setCopyLoading(true);
     try {
-      const response = await fetch(`${API_URL}/shoot-days`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        setCopyError('Could not load shoot days.');
-        return;
-      }
-      const all: ShootDaySummary[] = await response.json();
+      const all = await shootDaysApi.getShootDays();
       // Other upcoming shoot days, soonest first
       setCopyTargets(
         all
@@ -289,7 +266,7 @@ function ShootDayDetailScreen({
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       );
     } catch (error) {
-      setCopyError('Could not load shoot days.');
+      setCopyError(errorMessage(error, 'Could not load shoot days.'));
     } finally {
       setCopyLoading(false);
     }
@@ -311,16 +288,7 @@ function ShootDayDetailScreen({
     setCopyLoading(true);
     setCopyError('');
     try {
-      const response = await fetch(`${API_URL}/call-requests/${copyingId}/copy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ shootDayIds: copySelected }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setCopyError(data.error || 'Could not copy that call request.');
-        return;
-      }
+      const data = await callRequestsApi.copyCallRequest(copyingId, copySelected);
 
       const days = data.copied.length;
       const invited = data.copied.reduce((sum: number, c: { matchedCount: number }) => sum + c.matchedCount, 0);
@@ -330,7 +298,7 @@ function ShootDayDetailScreen({
       setTimeout(() => setCopyNotice(''), 4000);
       closeCopy();
     } catch (error) {
-      setCopyError('Something went wrong copying that call request.');
+      setCopyError(errorMessage(error, 'Something went wrong copying that call request.'));
     } finally {
       setCopyLoading(false);
     }
