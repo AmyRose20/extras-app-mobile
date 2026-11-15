@@ -89,8 +89,10 @@ function HeaderMenu({ isHome, onGoHome, onLogout, items = [], badgeCount = 0 }: 
 
 const localStyles = StyleSheet.create({
   wrapper: {
+    // Floats in the top-right corner, level with the screen title
+    // (the title's paddingRight in theme.ts keeps the text clear of it)
     position: 'absolute',
-    top: spacing.lg + spacing.md - 2,
+    top: spacing.md,
     right: spacing.md,
     zIndex: 100,
     elevation: 100,

@@ -574,6 +574,7 @@ const profileStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingRight: 44, // keeps the profile icon clear of the ☰ menu button
   },
   badge: {
     width: 32,

@@ -54,6 +54,13 @@ function ForgotPasswordScreen({ initialEmail, onBack, onDone }: Props) {
     }
   };
 
+  // Back to stage 1, to fix the email or ask for a new code
+  const goBackToEmail = () => {
+    setStage('email');
+    setCode('');
+    setCodeError('');
+  };
+
   // ----- Stage 2: code + new password -----
   const resetPassword = async () => {
     setCodeError('');
@@ -118,6 +125,14 @@ function ForgotPasswordScreen({ initialEmail, onBack, onDone }: Props) {
         ) : (
           <>
             {notice ? <Text style={forgotStyles.notice}>{notice}</Text> : null}
+
+            {/* Which address the code went to, so a typo is easy to spot */}
+            <Text style={forgotStyles.sentTo}>
+              Sent to <Text style={forgotStyles.sentToEmail}>{email.trim()}</Text>
+            </Text>
+            <TouchableOpacity onPress={goBackToEmail}>
+              <Text style={[text.link, forgotStyles.link]}>Wrong email? Change it</Text>
+            </TouchableOpacity>
             <Text style={[text.muted, forgotStyles.hint]}>Can't see it? Check your spam folder.</Text>
 
             <Text style={text.label}>Code</Text>
@@ -164,13 +179,7 @@ function ForgotPasswordScreen({ initialEmail, onBack, onDone }: Props) {
               style={forgotStyles.lastInCard}
             />
 
-            <TouchableOpacity
-              onPress={() => {
-                setStage('email');
-                setCode('');
-                setCodeError('');
-              }}
-            >
+            <TouchableOpacity onPress={goBackToEmail}>
               <Text style={[text.link, forgotStyles.link, forgotStyles.resendLink]}>Didn't get a code? Send a new one</Text>
             </TouchableOpacity>
           </>
@@ -202,6 +211,15 @@ const forgotStyles = StyleSheet.create({
     fontSize: 14,
     color: '#8fd9a8',
     marginBottom: 6,
+  },
+  sentTo: {
+    fontSize: 14,
+    color: colors.textSoft,
+    marginBottom: 4,
+  },
+  sentToEmail: {
+    fontWeight: '700',
+    color: colors.text,
   },
   hint: {
     marginBottom: 14,

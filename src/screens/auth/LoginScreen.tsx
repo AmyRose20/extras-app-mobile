@@ -27,15 +27,29 @@ function getCardTop(boxWidth: number, boxHeight: number): number {
   }
 }
 
+// Space to keep between the card and the bottom (or top) of the screen
+const EDGE_GAP = 16;
+
 function LoginScreen({ email, setEmail, password, setPassword, message, onLogin, notice, onForgotPassword }: Props) {
   const [box, setBox] = useState<{ width: number; height: number } | null>(null);
+  const [cardHeight, setCardHeight] = useState(0); // measured once the card has drawn
 
+  // Runs when the screen first draws, and again when its size changes
+  // (on Android, opening the keyboard makes the screen shorter)
   function handleLayout(e: LayoutChangeEvent) {
     const { width, height } = e.nativeEvent.layout;
     setBox({ width, height });
   }
 
-  const cardTop = box ? getCardTop(box.width, box.height) : null;
+  // Where the artwork wants the card: just under the logo
+  const artworkTop = box ? getCardTop(box.width, box.height) : null;
+
+  // On a short screen (or with the keyboard open) that spot can push the card off the bottom.
+  // So move it up just enough to fit, but never above the top edge.
+  const cardTop =
+    box && artworkTop !== null
+      ? Math.max(EDGE_GAP, Math.min(artworkTop, box.height - cardHeight - EDGE_GAP))
+      : null;
 
   return (
     <ImageBackground
@@ -45,7 +59,10 @@ function LoginScreen({ email, setEmail, password, setPassword, message, onLogin,
       onLayout={handleLayout}
     >
       {cardTop !== null && (
-        <View style={[loginStyles.cardWrapper, { top: cardTop }]}>
+        <View
+          style={[loginStyles.cardWrapper, { top: cardTop }]}
+          onLayout={(e) => setCardHeight(e.nativeEvent.layout.height)}
+        >
           <View style={loginStyles.card}>
             <TextInput
               style={loginStyles.input}

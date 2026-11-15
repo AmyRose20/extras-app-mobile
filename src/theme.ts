@@ -56,6 +56,7 @@ export const text = StyleSheet.create({
     color: colors.text,
     letterSpacing: 0.5,
     marginBottom: spacing.md,
+    paddingRight: 44, // keeps long titles clear of the ☰ menu button in the top-right corner
   },
   // Small grey uppercase label above a field, e.g. "EMAIL ADDRESS"
   label: {
