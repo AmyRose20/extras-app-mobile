@@ -5,11 +5,15 @@ import * as profilesApi from '../api/profilesApi';
 import * as invitesApi from '../api/invitesApi';
 import * as requestsApi from '../api/requestsApi';
 
+const PAGE_SIZE = 10; // extras per page
+
 // Coordinators: the Extra Profiles list with its search and filters,
 // plus one opened extra (their profile, activity numbers and the menu actions).
 export function useExtras(screen: Screen) {
   // ----- The list + filters -----
-  const [extras, setExtras] = useState<ExtraSummary[]>([]);
+  const [extras, setExtras] = useState<ExtraSummary[]>([]); // just the current page
+  const [extrasPage, setExtrasPage] = useState(1);
+  const [extrasTotal, setExtrasTotal] = useState(0); // how many match, across all pages
   const [extrasLoading, setExtrasLoading] = useState(false);
   const [extrasMessage, setExtrasMessage] = useState('');
   const [nameFilter, setNameFilter] = useState('');
@@ -25,25 +29,36 @@ export function useExtras(screen: Screen) {
   const [extraDetailMessage, setExtraDetailMessage] = useState('');
   const [extraTally, setExtraTally] = useState<Tally | null>(null);
 
-  const loadExtras = async () => {
+  // Asks the server for one page of extras, using the current search and filters
+  const loadPage = async (page: number, filters: profilesApi.ExtrasFilters = currentFilters()) => {
     setExtrasLoading(true);
     setExtrasMessage('');
     try {
-      const data = await profilesApi.getExtras({
-        skills: skillFilter,
-        gender: genderFilter,
-        availability: availabilityFilter,
-        minAge: minAgeFilter,
-        maxAge: maxAgeFilter,
-        name: nameFilter,
-      });
-      setExtras(data);
+      const data = await profilesApi.getExtras(filters, page, PAGE_SIZE);
+      setExtras(data.extras);
+      setExtrasTotal(data.total);
+      setExtrasPage(data.page);
     } catch (error) {
       setExtrasMessage(`Could not load extras: ${errorMessage(error)}`);
     } finally {
       setExtrasLoading(false);
     }
   };
+
+  const currentFilters = (): profilesApi.ExtrasFilters => ({
+    skills: skillFilter,
+    gender: genderFilter,
+    availability: availabilityFilter,
+    minAge: minAgeFilter,
+    maxAge: maxAgeFilter,
+    name: nameFilter,
+  });
+
+  // A new search or filter always starts from page 1
+  const loadExtras = () => loadPage(1);
+
+  // The Pager's Prev / Next
+  const goToExtrasPage = (page: number) => loadPage(page);
 
   // Load on Extra Profiles, and again whenever the search or a filter changes.
   // (Age only reloads when "Apply Age Filter" is tapped, so typing doesn't search each digit.)
@@ -52,6 +67,14 @@ export function useExtras(screen: Screen) {
       loadExtras();
     }
   }, [screen, nameFilter, skillFilter, genderFilter, availabilityFilter]);
+
+  // Going back to Home starts the search and filters fresh for next time.
+  // (Opening an extra's profile and pressing Back keeps them, which is handy mid-search.)
+  useEffect(() => {
+    if (screen === 'home') {
+      resetExtras();
+    }
+  }, [screen]);
 
   const toggleSkillFilter = (skill: string) => {
     setSkillFilter((prev) => (prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]));
@@ -67,15 +90,9 @@ export function useExtras(screen: Screen) {
     setAvailabilityFilter([]);
     setMinAgeFilter('');
     setMaxAgeFilter('');
-    setExtrasLoading(true);
-    setExtrasMessage('');
-    try {
-      setExtras(await profilesApi.getExtras()); // no filters = everyone on my production
-    } catch (error) {
-      setExtrasMessage(`Could not load extras: ${errorMessage(error)}`);
-    } finally {
-      setExtrasLoading(false);
-    }
+    // The filters above only change on the next render, so ask with "no filters" directly
+    // (the name search stays, like before)
+    await loadPage(1, { name: nameFilter });
   };
 
   // On log out: forget the last user's search, filters and list,
@@ -88,6 +105,8 @@ export function useExtras(screen: Screen) {
     setMinAgeFilter('');
     setMaxAgeFilter('');
     setExtras([]);
+    setExtrasPage(1);
+    setExtrasTotal(0);
   };
 
   const loadExtraProfile = async (id: string) => {
@@ -145,6 +164,10 @@ export function useExtras(screen: Screen) {
 
   return {
     extras,
+    extrasPage,
+    extrasTotal,
+    extrasPageSize: PAGE_SIZE,
+    goToExtrasPage,
     extrasLoading,
     extrasMessage,
     nameFilter,

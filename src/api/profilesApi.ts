@@ -44,17 +44,26 @@ export type ExtrasFilters = {
   name?: string;
 };
 
-// The extras on my production, sorted A–Z, narrowed by any filters given
-export function getExtras(filters: ExtrasFilters = {}) {
+// One page of the server's reply to GET /profiles
+export type ExtrasPage = {
+  extras: ExtraSummary[];
+  total: number; // how many match, across all pages
+  page: number; // the page actually sent (the server moves a too-high page back to the last one)
+  pageSize: number;
+};
+
+// One page of the extras on my production, sorted A–Z, narrowed by any filters given
+export function getExtras(filters: ExtrasFilters = {}, page = 1, pageSize = 10) {
   const params = new URLSearchParams();
+  params.append('page', String(page));
+  params.append('pageSize', String(pageSize));
   if (filters.skills && filters.skills.length > 0) params.append('skill', filters.skills.join(','));
   if (filters.gender) params.append('gender', filters.gender);
   if (filters.availability && filters.availability.length > 0) params.append('availability', filters.availability.join(','));
   if (filters.minAge) params.append('minAge', filters.minAge);
   if (filters.maxAge) params.append('maxAge', filters.maxAge);
   if (filters.name && filters.name.trim()) params.append('name', filters.name.trim());
-  const query = params.toString() ? `?${params.toString()}` : '';
-  return apiRequest<ExtraSummary[]>(`/profiles${query}`);
+  return apiRequest<ExtrasPage>(`/profiles?${params.toString()}`);
 }
 
 export function getExtraProfile(extraProfileId: string) {

@@ -287,6 +287,10 @@ function AppContent(): React.JSX.Element {
       return (
         <ExtrasListScreen
           extras={casting.extras}
+          page={casting.extrasPage}
+          total={casting.extrasTotal}
+          pageSize={casting.extrasPageSize}
+          onChangePage={casting.goToExtrasPage}
           loading={casting.extrasLoading}
           message={casting.extrasMessage}
           skillFilter={casting.skillFilter}

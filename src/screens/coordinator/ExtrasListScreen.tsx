@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useProfileOptions, allOptions } from '../../hooks/useProfileOptions';
@@ -11,10 +11,12 @@ import TextField from '../../components/TextField';
 import Pager from '../../components/Pager';
 import { colors, text } from '../../theme';
 
-const PAGE_SIZE = 10;
-
 type Props = {
-  extras: ExtraSummary[];
+  extras: ExtraSummary[]; // just the current page (the server sends one page at a time)
+  page: number;
+  total: number; // how many extras match, across all pages
+  pageSize: number;
+  onChangePage: (page: number) => void;
   loading: boolean;
   message: string;
   skillFilter: string[];
@@ -39,6 +41,10 @@ type Props = {
 
 function ExtrasListScreen({
   extras,
+  page,
+  total,
+  pageSize,
+  onChangePage,
   loading,
   message,
   skillFilter,
@@ -72,24 +78,14 @@ function ExtrasListScreen({
     return () => clearTimeout(timer);
   }, [searchText, onSearchName]);
 
-  // ----- Pagination: 10 extras per page -----
-  const [page, setPage] = useState(1);
+  // ----- Pagination: the server sends one page at a time, plus the total -----
   const scrollRef = useRef<ScrollView>(null);
-  const totalPages = Math.max(1, Math.ceil(extras.length / PAGE_SIZE));
-  const pageExtras = useMemo(
-    () => extras.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [extras, page],
-  );
-  const firstShown = (page - 1) * PAGE_SIZE + 1;
-  const lastShown = Math.min(page * PAGE_SIZE, extras.length);
-
-  // A new list (e.g. after changing a filter) starts back on page 1
-  useEffect(() => {
-    setPage(1);
-  }, [extras]);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const firstShown = (page - 1) * pageSize + 1;
+  const lastShown = (page - 1) * pageSize + extras.length;
 
   const goToPage = (newPage: number) => {
-    setPage(newPage);
+    onChangePage(newPage); // ask the server for that page
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 
@@ -253,10 +249,10 @@ function ExtrasListScreen({
       ) : (
         <View style={extrasListStyles.resultsSpacing}>
           <Text style={extrasListStyles.resultCount}>
-            Showing {firstShown}–{lastShown} of {extras.length}
+            Showing {firstShown}–{lastShown} of {total}
           </Text>
 
-          {pageExtras.map((extra) => (
+          {extras.map((extra) => (
             <TouchableOpacity key={extra.id} onPress={() => onSelectExtra(extra.id)}>
               <GlassCard style={extrasListStyles.card}>
                 <Text style={extrasListStyles.cardTitle}>{extra.name}</Text>
