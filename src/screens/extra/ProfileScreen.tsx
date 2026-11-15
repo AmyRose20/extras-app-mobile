@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Text, TouchableOpacity, Image, View, StyleSheet } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { formatToDDMMYYYY, ageFromDob } from '../../dateUtils';
-import { AVAILABILITY_GROUPS, SKILL_GROUPS, LANGUAGE_GROUPS } from '../../constants';
+import { useProfileOptions } from '../../hooks/useProfileOptions';
 import ChipMultiSelect from '../../components/ChipMultiSelect';
 import GroupedMultiSelect from '../../components/GroupedMultiSelect';
 import ScreenBackground from '../../components/ScreenBackground';
@@ -198,6 +198,7 @@ function ProfileScreen({
   setAccountNameInput,
   bankError,
 }: Props) {
+  const options = useProfileOptions(); // the skill / language / availability choices
   const [showDobPicker, setShowDobPicker] = useState(false);
   const age = ageFromDob(dateOfBirth); // worked out live, so it updates as soon as a date is picked
 
@@ -301,7 +302,7 @@ function ProfileScreen({
               <GlassCard>
                 <GroupedMultiSelect
                   label="Skills"
-                  groups={SKILL_GROUPS}
+                  groups={options.skillGroups}
                   selected={skills}
                   onToggle={onToggleSkill}
                   otherText={otherSkills}
@@ -309,7 +310,7 @@ function ProfileScreen({
                 />
                 <GroupedMultiSelect
                   label="Languages"
-                  groups={LANGUAGE_GROUPS}
+                  groups={options.languageGroups}
                   selected={languages}
                   onToggle={onToggleLanguage}
                   otherText={otherLanguages}
@@ -317,7 +318,7 @@ function ProfileScreen({
                 />
                 <GroupedMultiSelect
                   label="Availability"
-                  groups={AVAILABILITY_GROUPS}
+                  groups={options.availabilityGroups}
                   selected={availability}
                   onToggle={onToggleAvailability}
                 />

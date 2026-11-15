@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { SKILL_GROUPS, AVAILABILITY_OPTIONS } from '../../constants';
+import { useProfileOptions, allOptions } from '../../hooks/useProfileOptions';
 import { ExtraSummary } from '../../types';
 import ScreenBackground from '../../components/ScreenBackground';
 import GlassCard from '../../components/GlassCard';
@@ -60,6 +60,7 @@ function ExtrasListScreen({
   onClearFilters,
   onBack,
 }: Props) {
+  const options = useProfileOptions(); // the skill + availability choices for the filters
   const [activeFilterType, setActiveFilterType] = useState('skill');
 
   // ----- Name search: wait until typing stops, then search -----
@@ -158,7 +159,7 @@ function ExtrasListScreen({
                 dropdownIconColor={colors.text}
               >
                 <Picker.Item label="All" value="" color={colors.onGold} />
-                {SKILL_GROUPS.flatMap((group) => [
+                {options.skillGroups.flatMap((group) => [
                   <Picker.Item
                     key={`heading:${group.title}`}
                     label={group.title.toUpperCase()}
@@ -184,7 +185,7 @@ function ExtrasListScreen({
                 dropdownIconColor={colors.text}
               >
                 <Picker.Item label="All" value="" color={colors.onGold} />
-                {AVAILABILITY_OPTIONS.map((day) => (
+                {allOptions(options.availabilityGroups).map((day) => (
                   <Picker.Item key={day} label={day} value={day} color={colors.onGold} />
                 ))}
               </Picker>

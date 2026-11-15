@@ -5,7 +5,7 @@ import { Screen, Role, Production, PendingProduction, DeniedProduction, MaskedBa
 import { errorMessage } from '../api/client';
 import * as profilesApi from '../api/profilesApi';
 import * as requestsApi from '../api/requestsApi';
-import { SKILL_OPTIONS, LANGUAGE_OPTIONS, AVAILABILITY_GROUPS } from '../constants';
+import { loadProfileOptions, allOptions } from './useProfileOptions';
 
 type Options = {
   screen: Screen;
@@ -87,22 +87,26 @@ export function useMyProfile({ screen, role, userId, loginEmail }: Options) {
     setProfileLoading(true);
     setProfileMessage('');
     try {
-      const data = await profilesApi.getMyProfile();
+      // The profile, plus the choices it's checked against (loaded once, then shared)
+      const [data, options] = await Promise.all([profilesApi.getMyProfile(), loadProfileOptions()]);
+      const knownSkills = allOptions(options.skillGroups);
+      const knownLanguages = allOptions(options.languageGroups);
+      const knownAvailability = allOptions(options.availabilityGroups);
 
       setDateOfBirth(data.dateOfBirth ? data.dateOfBirth.slice(0, 10) : '');
       setGender(data.gender ?? '');
       setHeightCm(data.heightCm ? String(data.heightCm) : '');
       const fetchedSkills: string[] = data.skills ?? [];
-      setSkills(fetchedSkills.filter((s) => SKILL_OPTIONS.includes(s)));
-      setOtherSkills(fetchedSkills.filter((s) => !SKILL_OPTIONS.includes(s)).join(', '));
+      setSkills(fetchedSkills.filter((s) => knownSkills.includes(s)));
+      setOtherSkills(fetchedSkills.filter((s) => !knownSkills.includes(s)).join(', '));
       const fetchedLanguages: string[] = data.languages ?? [];
-      setLanguages(fetchedLanguages.filter((l) => LANGUAGE_OPTIONS.includes(l)));
-      setOtherLanguages(fetchedLanguages.filter((l) => !LANGUAGE_OPTIONS.includes(l)).join(', '));
+      setLanguages(fetchedLanguages.filter((l) => knownLanguages.includes(l)));
+      setOtherLanguages(fetchedLanguages.filter((l) => !knownLanguages.includes(l)).join(', '));
       setPhoneNumber(data.phoneNumber ?? '');
       setContactEmail(data.contactEmail || loginEmail);
       const fetchedAvailability: string[] = data.availability ?? [];
-      setAvailability(fetchedAvailability.filter((a) => AVAILABILITY_GROUPS.some((group) => group.options.includes(a))));
-      setOtherAvailability(fetchedAvailability.filter((a) => !AVAILABILITY_GROUPS.some((group) => group.options.includes(a))).join(', '));
+      setAvailability(fetchedAvailability.filter((a) => knownAvailability.includes(a)));
+      setOtherAvailability(fetchedAvailability.filter((a) => !knownAvailability.includes(a)).join(', '));
       setFacePhotoUrl(data.facePhotoUrl ?? '');
       setFullBodyPhotoUrl(data.fullBodyPhotoUrl ?? '');
       setPendingFacePhoto(null);

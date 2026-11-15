@@ -5,7 +5,7 @@ import * as shootDaysApi from '../../api/shootDaysApi';
 import * as callRequestsApi from '../../api/callRequestsApi';
 import { errorMessage } from '../../api/client';
 import { ShootDaySummary } from '../../types';
-import { SKILL_GROUPS } from '../../constants';
+import { useProfileOptions } from '../../hooks/useProfileOptions';
 import { formatToDDMMYYYY, formatToHHMM } from '../../dateUtils';
 import GroupedMultiSelect from '../../components/GroupedMultiSelect';
 import ScreenBackground from '../../components/ScreenBackground';
@@ -27,6 +27,7 @@ const GENDER_OPTIONS = [
 ];
 
 function CreateCallRequestScreen({ onBack, onCreated, initialShootDayId }: Props) {
+  const options = useProfileOptions(); // the skill choices
   // ----- Upcoming shoot days for the dropdown -----
   const [shootDays, setShootDays] = useState<ShootDaySummary[]>([]);
   const [shootDaysLoading, setShootDaysLoading] = useState(true);
@@ -251,7 +252,7 @@ function CreateCallRequestScreen({ onBack, onCreated, initialShootDayId }: Props
 
         <GroupedMultiSelect
           label="Skills (optional)"
-          groups={SKILL_GROUPS}
+          groups={options.skillGroups}
           selected={skills}
           onToggle={toggleSkill}
           otherText={otherSkills}
