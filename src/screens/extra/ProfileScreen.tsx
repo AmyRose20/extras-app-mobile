@@ -481,12 +481,7 @@ function ProfileScreen({
   return (
     <View style={profileStyles.fill}>
       <ScreenBackground>
-        <View style={profileStyles.topRow}>
-          <Text style={[text.title, { marginBottom: 0 }]}>My Profile</Text>
-          <View style={profileStyles.badge}>
-            <View style={profileStyles.badgeInner} />
-          </View>
-        </View>
+        <Text style={text.title}>My Profile</Text>
 
         {deletionRequestStatus === 'PENDING' && (
           <View style={profileStyles.banner}>
@@ -568,30 +563,6 @@ function ProfileScreen({
 const profileStyles = StyleSheet.create({
   fill: {
     flex: 1,
-  },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingRight: 44, // keeps the profile icon clear of the ☰ menu button
-  },
-  badge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeInner: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: colors.textSoft,
   },
   banner: {
     backgroundColor: 'rgba(220,38,38,0.15)',

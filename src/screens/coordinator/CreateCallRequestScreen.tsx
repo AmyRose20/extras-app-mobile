@@ -123,8 +123,8 @@ function CreateCallRequestScreen({ onBack, onCreated, initialShootDayId }: Props
       });
 
       if (data.matchedCount === 0) {
-        // The call request was still created, just with nobody invited
-        setWarning(data.warning || 'Created, but no extras matched. Try widening the age range, gender or skills.');
+        // Nobody matched, so the backend didn't create anything; stay here so they can widen the criteria
+        setWarning(data.warning || 'No extras matched these criteria, so nothing was created. Try widening the age range, gender or skills.');
         return;
       }
 

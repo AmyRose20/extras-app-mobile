@@ -8,7 +8,7 @@ import GhostButton from '../../components/GhostButton';
 import Pager from '../../components/Pager';
 import { colors, text } from '../../theme';
 
-const PAGE_SIZE = 6; // shoot days per page
+const PAGE_SIZE = 5; // shoot days per page (fits on one screen without scrolling)
 
 type Props = {
   shootDays: ShootDaySummary[];
