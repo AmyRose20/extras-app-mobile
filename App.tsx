@@ -3,6 +3,8 @@ import { Text, View, StatusBar } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen, DialogConfig } from './src/types';
 import { setPasswordChangedHandler } from './src/api/client';
+import { getApp } from '@react-native-firebase/app';
+import { getMessaging, onNotificationOpenedApp } from '@react-native-firebase/messaging';
 
 // Hooks: each one looks after one area of the app's data
 import { useNavigation } from './src/hooks/useNavigation';
@@ -118,6 +120,17 @@ function AppContent(): React.JSX.Element {
     });
     return () => setPasswordChangedHandler(null); // stop listening if App ever unmounts
   }, []);
+
+  // When an extra opens the app by tapping a push notification, go straight to My Invites
+  // (every push an extra gets is about an invite: a new call or a changed shoot day).
+  // This covers the app running in the background; if it was fully closed, they log in first.
+  useEffect(() => {
+    if (!token || role !== 'EXTRA') return; // only while an extra is logged in
+    const unsubscribe = onNotificationOpenedApp(getMessaging(getApp()), () => {
+      setScreen('invites');
+    });
+    return unsubscribe; // stop listening on log out
+  }, [token, role]);
 
   const handleSelectExtra = (id: string, returnTo: Screen = 'extrasList') => {
     setExtraProfileReturnTo(returnTo);
